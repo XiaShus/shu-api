@@ -109,22 +109,35 @@ func RewriteOpenAIImageResponse(info *relaycommon.RelayInfo, body []byte) []byte
 	}
 	n := gjson.GetBytes(body, "data.#").Int()
 	for i := range n {
-		path := fmt.Sprintf("data.%d.b64_json", i)
-		b64 := gjson.GetBytes(body, path)
-		if b64.Type != gjson.String || b64.String() == "" {
+		b64Path := fmt.Sprintf("data.%d.b64_json", i)
+		urlPath := fmt.Sprintf("data.%d.url", i)
+		b64 := gjson.GetBytes(body, b64Path)
+		if b64.Type == gjson.String && b64.String() != "" {
+			url, err := persistWithInfo(info, b64.String())
+			if err != nil {
+				continue
+			}
+			next, setErr := sjson.SetBytes(body, urlPath, url)
+			if setErr != nil {
+				continue
+			}
+			next, delErr := sjson.DeleteBytes(next, b64Path)
+			if delErr != nil {
+				continue
+			}
+			body = next
 			continue
 		}
-		url, err := persistWithInfo(info, b64.String())
+		origin := strings.TrimSpace(gjson.GetBytes(body, urlPath).String())
+		if origin == "" || (!strings.HasPrefix(origin, "http://") && !strings.HasPrefix(origin, "https://")) {
+			continue
+		}
+		url, err := persistRemoteWithInfo(info, origin)
 		if err != nil {
 			continue
 		}
-		urlPath := fmt.Sprintf("data.%d.url", i)
 		next, setErr := sjson.SetBytes(body, urlPath, url)
 		if setErr != nil {
-			continue
-		}
-		next, delErr := sjson.DeleteBytes(next, path)
-		if delErr != nil {
 			continue
 		}
 		body = next
@@ -374,6 +387,25 @@ func persistWithInfo(info *relaycommon.RelayInfo, dataURIOrB64 string) (string, 
 	url, err := PersistBase64Image(context.Background(), target, dataURIOrB64, info.UserId)
 	if err != nil {
 		common.SysError("image storage persist failed: " + err.Error())
+		markImageStorageFallback(info, err.Error())
+		return "", err
+	}
+	if info.ImageStorage != nil {
+		info.ImageStorage.Persisted++
+	}
+	return url, nil
+}
+
+func persistRemoteWithInfo(info *relaycommon.RelayInfo, originURL string) (string, error) {
+	target, reason := ResolveImageStorageTarget(info.UserId, info.CdnKey)
+	if target == nil {
+		recordImageStorageMiss(info, reason)
+		return "", fmt.Errorf("%s", reason)
+	}
+	ensureImageStorageInfo(info, target, "")
+	url, err := persistRemoteURL(context.Background(), target, originURL, info.UserId)
+	if err != nil {
+		common.SysError("image storage persist remote failed: " + err.Error())
 		markImageStorageFallback(info, err.Error())
 		return "", err
 	}
