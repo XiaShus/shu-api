@@ -112,6 +112,9 @@ const CONTENT_SECTIONS = [
           MjForwardUrlEnabled: settings.MjForwardUrlEnabled,
           MjModeClearEnabled: settings.MjModeClearEnabled,
           MjActionCheckSuccessEnabled: settings.MjActionCheckSuccessEnabled,
+          MjModePathPrefixEnabled: settings.MjModePathPrefixEnabled,
+          MjModeRatio: settings.MjModeRatio,
+          MjGroupModePolicy: settings.MjGroupModePolicy,
         }}
       />
     ),

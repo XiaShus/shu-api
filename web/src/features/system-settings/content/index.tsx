@@ -43,6 +43,9 @@ const defaultContentSettings: ContentSettings = {
   MjForwardUrlEnabled: false,
   MjModeClearEnabled: false,
   MjActionCheckSuccessEnabled: false,
+  MjModePathPrefixEnabled: true,
+  MjModeRatio: '{"fast":1,"relax":1,"turbo":2,"draft":0.5}',
+  MjGroupModePolicy: '{}',
 }
 
 function resolveContentSettings(

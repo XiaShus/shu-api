@@ -201,8 +201,14 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 				task.VideoUrls = "" // 空值时清空字段
 			}
 
+			logMidjourneyModeMismatch(ctx, task, responseItem)
+			if responseItem.Status == "SUCCESS" {
+				service.PersistMidjourneyMedia(task)
+			}
+
 			shouldReturnQuota := false
-			if (task.Progress != "100%" && responseItem.FailReason != "") || (task.Progress == "100%" && task.Status == "FAILURE") {
+			terminalFail := task.Status == "FAILURE" || task.Status == "CANCEL" || task.Status == "CANCELED" || task.Status == "CANCELLED"
+			if (task.Progress != "100%" && responseItem.FailReason != "") || (task.Progress == "100%" && terminalFail) {
 				logger.LogInfo(ctx, task.MjId+" 构建失败，"+task.FailReason)
 				task.Progress = "100%"
 				if task.Quota != 0 {
@@ -264,6 +270,14 @@ func checkMjTaskNeedUpdate(oldTask *model.Midjourney, newTask dto.MidjourneyDto)
 	if oldTask.VideoUrl != newTask.VideoUrl {
 		return true
 	}
+	storedMode := service.NormalizeMjMode(oldTask.Mode)
+	upstreamMode := service.NormalizeMjMode(newTask.Mode)
+	if upstreamMode == "" && newTask.Properties != nil {
+		upstreamMode = service.InferMjModeFromPrompt(newTask.Properties.FinalPrompt)
+	}
+	if storedMode != "" && upstreamMode != "" && storedMode != upstreamMode {
+		return true
+	}
 	// 检查 VideoUrls 是否需要更新
 	if newTask.VideoUrls != nil && len(newTask.VideoUrls) > 0 {
 		newVideoUrlsStr, _ := common.Marshal(newTask.VideoUrls)
@@ -294,8 +308,10 @@ func GetAllMidjourney(c *gin.Context) {
 
 	if setting.MjForwardUrlEnabled {
 		for i, midjourney := range items {
-			midjourney.ImageUrl = system_setting.ServerAddress + "/mj/image/" + midjourney.MjId
-			items[i] = midjourney
+			if midjourney != nil && !midjourney.MediaStored {
+				midjourney.ImageUrl = system_setting.ServerAddress + "/mj/image/" + midjourney.MjId
+				items[i] = midjourney
+			}
 		}
 	}
 	pageInfo.SetTotal(int(total))
@@ -319,11 +335,28 @@ func GetUserMidjourney(c *gin.Context) {
 
 	if setting.MjForwardUrlEnabled {
 		for i, midjourney := range items {
-			midjourney.ImageUrl = system_setting.ServerAddress + "/mj/image/" + midjourney.MjId
-			items[i] = midjourney
+			if midjourney != nil && !midjourney.MediaStored {
+				midjourney.ImageUrl = system_setting.ServerAddress + "/mj/image/" + midjourney.MjId
+				items[i] = midjourney
+			}
 		}
 	}
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(items)
 	common.ApiSuccess(c, pageInfo)
+}
+
+func logMidjourneyModeMismatch(ctx context.Context, task *model.Midjourney, item dto.MidjourneyDto) {
+	if task == nil {
+		return
+	}
+	stored := service.NormalizeMjMode(task.Mode)
+	upstream := service.NormalizeMjMode(item.Mode)
+	if upstream == "" && item.Properties != nil {
+		upstream = service.InferMjModeFromPrompt(item.Properties.FinalPrompt)
+	}
+	if stored == "" || upstream == "" || stored == upstream {
+		return
+	}
+	common.SysLog(fmt.Sprintf("midjourney mode mismatch mj_id=%s stored=%s upstream=%s", task.MjId, stored, upstream))
 }

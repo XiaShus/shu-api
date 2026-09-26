@@ -120,6 +120,10 @@ func zhipu4vImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.
 	if err != nil {
 		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 	}
+	jsonResp = service.RewriteOpenAIImageResponse(info, jsonResp)
+	if rewriteErr := service.ImageStorageStrictError(info); rewriteErr != nil {
+		return nil, rewriteErr
+	}
 
 	service.IOCopyBytesGracefully(c, resp, jsonResp)
 

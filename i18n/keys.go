@@ -342,3 +342,11 @@ const (
 	MsgCustomOAuthBindingNotFound   = "custom_oauth.binding_not_found"
 	MsgCustomOAuthProviderIdInvalid = "custom_oauth.provider_id_field_invalid"
 )
+
+const (
+	MsgImageStorageNotFound        = "image_storage.not_found"
+	MsgImageStorageLimitReached    = "image_storage.limit_reached"
+	MsgImageStorageUserDisabled    = "image_storage.user_disabled"
+	MsgImageStorageInvalidEndpoint = "image_storage.invalid_endpoint"
+	MsgImageStorageTestFailed      = "image_storage.test_failed"
+)

@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import type { ColumnDef } from '@tanstack/react-table'
 import {
+  AppWindow,
   Blend,
   FileText,
   HelpCircle,
@@ -38,6 +39,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Dialog } from '@/components/dialog'
 import { StatusBadge } from '@/components/status-badge'
 import { formatTimestampToDate } from '@/lib/format'
 
@@ -73,12 +75,37 @@ const drawingTypeIconMap: Record<string, LucideIcon> = {
   [MJ_TASK_TYPES.REROLL]: RefreshCw,
   [MJ_TASK_TYPES.INPAINT]: WandSparkles,
   [MJ_TASK_TYPES.SWAP_FACE]: UserRound,
+  [MJ_TASK_TYPES.SWAP_VIDEO_FACE]: Video,
+  [MJ_TASK_TYPES.RETEXTURE]: Paintbrush,
   [MJ_TASK_TYPES.ZOOM]: ZoomIn,
   [MJ_TASK_TYPES.CUSTOM_ZOOM]: ZoomIn,
+  [MJ_TASK_TYPES.MODAL]: AppWindow,
 }
 
 function getDrawingTypeIcon(action: string): LucideIcon {
   return drawingTypeIconMap[action] ?? HelpCircle
+}
+
+function firstVideoUrl(log: MidjourneyLog): string {
+  if (log.video_url) return log.video_url
+  if (!log.video_urls) return ''
+  try {
+    const parsed: unknown = JSON.parse(log.video_urls)
+    if (!Array.isArray(parsed) || parsed.length === 0) return ''
+    const first = parsed[0]
+    if (typeof first === 'string') return first
+    if (
+      first &&
+      typeof first === 'object' &&
+      'url' in first &&
+      typeof first.url === 'string'
+    ) {
+      return first.url
+    }
+  } catch {
+    return ''
+  }
+  return ''
 }
 
 export function useDrawingLogsColumns(
@@ -130,6 +157,26 @@ export function useDrawingLogsColumns(
           size='sm'
           copyable={false}
           className='-ml-1.5'
+        />
+      )
+    },
+  })
+
+  columns.push({
+    accessorKey: 'mode',
+    header: t('Mode'),
+    cell: ({ row }) => {
+      const mode = (row.getValue('mode') as string | undefined)?.trim()
+      if (!mode) {
+        return <span className='text-muted-foreground/60 text-xs'>-</span>
+      }
+      return (
+        <StatusBadge
+          label={mode}
+          variant='neutral'
+          size='sm'
+          copyable={false}
+          className='-ml-1.5 uppercase'
         />
       )
     },
@@ -220,6 +267,48 @@ export function useDrawingLogsColumns(
               open={dialogOpen}
               onOpenChange={setDialogOpen}
             />
+          </>
+        )
+      },
+    },
+    {
+      id: 'video_url',
+      accessorFn: (log) => firstVideoUrl(log),
+      header: t('Video'),
+      cell: function VideoCell({ row }) {
+        const log = row.original
+        const videoUrl = firstVideoUrl(log)
+        const [dialogOpen, setDialogOpen] = useState(false)
+
+        if (!videoUrl) {
+          return <span className='text-muted-foreground/60 text-xs'>-</span>
+        }
+
+        return (
+          <>
+            <button
+              type='button'
+              className='group text-left text-xs'
+              onClick={() => setDialogOpen(true)}
+              title={t('Click to view video')}
+            >
+              <span className='text-foreground truncate leading-snug group-hover:underline'>
+                {t('View')}
+              </span>
+            </button>
+            <Dialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              title={t('Video')}
+              description={log.mj_id}
+            >
+              <video
+                className='bg-muted max-h-[70vh] w-full rounded-md'
+                src={videoUrl}
+                controls
+                playsInline
+              />
+            </Dialog>
           </>
         )
       },

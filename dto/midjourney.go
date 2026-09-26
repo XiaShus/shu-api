@@ -12,18 +12,23 @@ type SwapFaceRequest struct {
 	TargetBase64 string `json:"targetBase64"`
 }
 
+type MidjourneyAccountFilter struct {
+	Modes []string `json:"modes"`
+}
+
 type MidjourneyRequest struct {
-	Prompt      string   `json:"prompt"`
-	CustomId    string   `json:"customId"`
-	BotType     string   `json:"botType"`
-	NotifyHook  string   `json:"notifyHook"`
-	Action      string   `json:"action"`
-	Index       int      `json:"index"`
-	State       string   `json:"state"`
-	TaskId      string   `json:"taskId"`
-	Base64Array []string `json:"base64Array"`
-	Content     string   `json:"content"`
-	MaskBase64  string   `json:"maskBase64"`
+	Prompt        string                   `json:"prompt"`
+	CustomId      string                   `json:"customId"`
+	BotType       string                   `json:"botType"`
+	NotifyHook    string                   `json:"notifyHook"`
+	Action        string                   `json:"action"`
+	Index         int                      `json:"index"`
+	State         string                   `json:"state"`
+	TaskId        string                   `json:"taskId"`
+	Base64Array   []string                 `json:"base64Array"`
+	Content       string                   `json:"content"`
+	MaskBase64    string                   `json:"maskBase64"`
+	AccountFilter *MidjourneyAccountFilter `json:"accountFilter"`
 }
 
 type MidjourneyResponse struct {
@@ -59,6 +64,7 @@ type MidjourneyDto struct {
 	ImageUrl    string      `json:"imageUrl"`
 	VideoUrl    string      `json:"videoUrl"`
 	VideoUrls   []ImgUrls   `json:"videoUrls"`
+	Mode        string      `json:"mode"`
 	Status      string      `json:"status"`
 	Progress    string      `json:"progress"`
 	FailReason  string      `json:"failReason"`

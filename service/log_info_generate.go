@@ -125,6 +125,7 @@ func GenerateTextOtherInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, m
 	appendBillingInfo(relayInfo, other)
 	appendParamOverrideInfo(relayInfo, other)
 	appendStreamStatus(relayInfo, other)
+	appendImageStorageInfo(relayInfo, other)
 	return other
 }
 
@@ -305,6 +306,17 @@ func GenerateMjOtherInfo(relayInfo *relaycommon.RelayInfo, priceData hosttypes.P
 		other.SetPublic("user_group_ratio", priceData.GroupRatioInfo.GroupSpecialRatio)
 	}
 	appendRequestPath(nil, relayInfo, other)
+	if relayInfo.TaskRelayInfo != nil {
+		if relayInfo.TaskRelayInfo.MjMode != "" {
+			other.SetPublic("mj_mode", relayInfo.TaskRelayInfo.MjMode)
+		}
+		if relayInfo.TaskRelayInfo.MjModeSource != "" {
+			other.SetPublic("mj_mode_source", relayInfo.TaskRelayInfo.MjModeSource)
+		}
+		if relayInfo.TaskRelayInfo.MjModeRatio != 0 {
+			other.SetPublic("mj_mode_ratio", relayInfo.TaskRelayInfo.MjModeRatio)
+		}
+	}
 	return other
 }
 
@@ -354,4 +366,11 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 			other.SetPublic("fixed_price", *snap.EstimatedFixedPrice)
 		}
 	}
+}
+
+func appendImageStorageInfo(relayInfo *relaycommon.RelayInfo, other *model.LogOther) {
+	if relayInfo == nil || other == nil || relayInfo.ImageStorage == nil {
+		return
+	}
+	other.SetPublic("image_storage", relayInfo.ImageStorage)
 }

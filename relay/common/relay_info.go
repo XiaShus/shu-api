@@ -166,6 +166,9 @@ type RelayInfo struct {
 
 	PriceData hosttypes.PriceData
 
+	CdnKey       string
+	ImageStorage *ImageStorageInfo
+
 	// QuotaClamp is set (non-nil) when a quota conversion saturated at the
 	// supported single-request bound (or NaN fallback) while computing this request's charge.
 	// It is surfaced onto the consume/task log's admin_info for auditing.
@@ -609,6 +612,7 @@ func genBaseRelayInfo(c *gin.Context, request dto.Request) *RelayInfo {
 		RequestHeaders:  cloneRequestHeaders(c),
 		IsStream:        isStream,
 
+		CdnKey:            strings.TrimSpace(c.GetHeader("X-CDN-Key")),
 		StartTime:         startTime,
 		FirstResponseTime: startTime.Add(-time.Second),
 		ThinkingContentInfo: ThinkingContentInfo{
@@ -965,9 +969,21 @@ type OriginTaskRef struct {
 	Data           []byte
 }
 
+type ImageStorageInfo struct {
+	Source    string `json:"source"`
+	CdnKey    string `json:"cdn_key"`
+	StorageId int    `json:"storage_id"`
+	Persisted int    `json:"persisted"`
+	Fallback  bool   `json:"fallback"`
+	Reason    string `json:"reason,omitempty"`
+}
+
 type TaskRelayInfo struct {
 	Action       string
 	OriginTaskID string
+	MjMode       string
+	MjModeSource string
+	MjModeRatio  float64
 	// PublicTaskID 是提交时预生成的 task_xxxx 格式公开 ID，
 	// 供 DoResponse 在返回给客户端时使用（避免暴露上游真实 ID）。
 	PublicTaskID string

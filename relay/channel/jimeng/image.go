@@ -78,6 +78,10 @@ func jimengImageHandler(c *gin.Context, resp *http.Response, info *relaycommon.R
 	if err != nil {
 		return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 	}
+	jsonResponse = service.RewriteOpenAIImageResponse(info, jsonResponse)
+	if rewriteErr := service.ImageStorageStrictError(info); rewriteErr != nil {
+		return nil, rewriteErr
+	}
 
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(resp.StatusCode)

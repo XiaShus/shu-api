@@ -173,6 +173,9 @@ func InitOptionMap() {
 	common.OptionMap["MjModeClearEnabled"] = strconv.FormatBool(setting.MjModeClearEnabled)
 	common.OptionMap["MjForwardUrlEnabled"] = strconv.FormatBool(setting.MjForwardUrlEnabled)
 	common.OptionMap["MjActionCheckSuccessEnabled"] = strconv.FormatBool(setting.MjActionCheckSuccessEnabled)
+	common.OptionMap["MjModePathPrefixEnabled"] = strconv.FormatBool(setting.MjModePathPrefixEnabled)
+	common.OptionMap["MjModeRatio"] = setting.MjModeRatio2JSON()
+	common.OptionMap["MjGroupModePolicy"] = setting.MjGroupModePolicy2JSON()
 	common.OptionMap["CheckSensitiveEnabled"] = strconv.FormatBool(setting.CheckSensitiveEnabled)
 	common.OptionMap["DemoSiteEnabled"] = strconv.FormatBool(operation_setting.DemoSiteEnabled)
 	common.OptionMap["SelfUseModeEnabled"] = strconv.FormatBool(operation_setting.SelfUseModeEnabled)
@@ -397,6 +400,8 @@ func updateOptionMap(key string, value string) (err error) {
 			setting.MjForwardUrlEnabled = boolValue
 		case "MjActionCheckSuccessEnabled":
 			setting.MjActionCheckSuccessEnabled = boolValue
+		case "MjModePathPrefixEnabled":
+			setting.MjModePathPrefixEnabled = boolValue
 		case "CheckSensitiveEnabled":
 			setting.CheckSensitiveEnabled = boolValue
 		case "DemoSiteEnabled":
@@ -602,6 +607,10 @@ func updateOptionMap(key string, value string) (err error) {
 		err = ratio_setting.UpdateCompletionRatioByJSONString(value)
 	case "ModelPrice":
 		err = ratio_setting.UpdateModelPriceByJSONString(value)
+	case "MjModeRatio":
+		err = setting.UpdateMjModeRatioByJSONString(value)
+	case "MjGroupModePolicy":
+		err = setting.UpdateMjGroupModePolicyByJSONString(value)
 	case "CacheRatio":
 		err = ratio_setting.UpdateCacheRatioByJSONString(value)
 	case "CreateCacheRatio":

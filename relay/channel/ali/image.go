@@ -362,6 +362,10 @@ func aliImageHandler(a *Adaptor, c *gin.Context, resp *http.Response, info *rela
 	if err != nil {
 		return types.NewError(err, types.ErrorCodeBadResponseBody), nil
 	}
+	jsonResponse = service.RewriteOpenAIImageResponse(info, jsonResponse)
+	if rewriteErr := service.ImageStorageStrictError(info); rewriteErr != nil {
+		return rewriteErr, nil
+	}
 	service.IOCopyBytesGracefully(c, resp, jsonResponse)
 
 	return nil, &dto.Usage{}

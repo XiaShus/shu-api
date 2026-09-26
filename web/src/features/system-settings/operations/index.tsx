@@ -56,6 +56,17 @@ const defaultOperationsSettings: OperationsSettings = {
   'perf_metrics_setting.flush_interval': 5,
   'perf_metrics_setting.bucket_time': 'hour',
   'perf_metrics_setting.retention_days': 0,
+  'object_storage.enabled': false,
+  'object_storage.image_rewrite_enabled': false,
+  'object_storage.gemini_native_rewrite_enabled': false,
+  'object_storage.strict_mode': false,
+  'object_storage.mj_media_persist_enabled': false,
+  'object_storage.user_storage_enabled': true,
+  'object_storage.default_storage_id': 0,
+  'object_storage.upload_timeout_seconds': 30,
+  'object_storage.max_object_bytes': 52428800,
+  'object_storage.presign_ttl_seconds': 3600,
+  'object_storage.user_storage_max_count': 5,
 }
 
 export function OperationsSettings() {

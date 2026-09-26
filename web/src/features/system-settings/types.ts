@@ -215,6 +215,9 @@ export type ContentSettings = {
   MjForwardUrlEnabled: boolean
   MjModeClearEnabled: boolean
   MjActionCheckSuccessEnabled: boolean
+  MjModePathPrefixEnabled: boolean
+  MjModeRatio: string
+  MjGroupModePolicy: string
 }
 
 export type ModelSettings = {
@@ -398,6 +401,17 @@ export type OperationsSettings = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'hour' | 'minute' | '5min'
   'perf_metrics_setting.retention_days': number
+  'object_storage.enabled': boolean
+  'object_storage.image_rewrite_enabled': boolean
+  'object_storage.gemini_native_rewrite_enabled': boolean
+  'object_storage.strict_mode': boolean
+  'object_storage.mj_media_persist_enabled': boolean
+  'object_storage.user_storage_enabled': boolean
+  'object_storage.default_storage_id': number
+  'object_storage.upload_timeout_seconds': number
+  'object_storage.max_object_bytes': number
+  'object_storage.presign_ttl_seconds': number
+  'object_storage.user_storage_max_count': number
 }
 
 export type SecuritySettings = {

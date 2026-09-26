@@ -49,6 +49,9 @@ const (
 	RelayModeResponsesCompact
 
 	RelayModeAlphaSearch
+	RelayModeMidjourneyRetexture
+	RelayModeMidjourneyTaskCancel
+	RelayModeSwapVideoFace
 )
 
 func Path2RelayMode(path string) int {
@@ -87,7 +90,7 @@ func Path2RelayMode(path string) int {
 		relayMode = RelayModeRealtime
 	} else if strings.HasPrefix(path, "/v1beta/models") || strings.HasPrefix(path, "/v1/models") {
 		relayMode = RelayModeGemini
-	} else if strings.HasPrefix(path, "/mj") {
+	} else if strings.HasPrefix(path, "/mj") || strings.Contains(path, "/mj/") {
 		relayMode = Path2RelayModeMidjourney(path)
 	}
 	return relayMode
@@ -104,6 +107,8 @@ func Path2RelayModeMidjourney(path string) int {
 	} else if strings.HasSuffix(path, "/mj/submit/shorten") {
 		// midjourney plus
 		relayMode = RelayModeMidjourneyShorten
+	} else if strings.HasSuffix(path, "/mj/insight-face/video-swap") {
+		relayMode = RelayModeSwapVideoFace
 	} else if strings.HasSuffix(path, "/mj/insight-face/swap") {
 		// midjourney plus
 		relayMode = RelayModeSwapFace
@@ -114,7 +119,9 @@ func Path2RelayModeMidjourney(path string) int {
 		relayMode = RelayModeMidjourneyImagine
 	} else if strings.HasSuffix(path, "/mj/submit/video") {
 		relayMode = RelayModeMidjourneyVideo
-	} else if strings.HasSuffix(path, "/mj/submit/edits") {
+	} else if strings.HasSuffix(path, "/mj/submit/retexture") {
+		relayMode = RelayModeMidjourneyRetexture
+	} else if strings.HasSuffix(path, "/mj/submit/edits") || strings.HasSuffix(path, "/mj/submit/edit") {
 		relayMode = RelayModeMidjourneyEdits
 	} else if strings.HasSuffix(path, "/mj/submit/blend") {
 		relayMode = RelayModeMidjourneyBlend
@@ -126,11 +133,13 @@ func Path2RelayModeMidjourney(path string) int {
 		relayMode = RelayModeMidjourneyChange
 	} else if strings.HasSuffix(path, "/mj/submit/simple-change") {
 		relayMode = RelayModeMidjourneyChange
+	} else if strings.HasSuffix(path, "/cancel") {
+		relayMode = RelayModeMidjourneyTaskCancel
 	} else if strings.HasSuffix(path, "/fetch") {
 		relayMode = RelayModeMidjourneyTaskFetch
 	} else if strings.HasSuffix(path, "/image-seed") {
 		relayMode = RelayModeMidjourneyTaskImageSeed
-	} else if strings.HasSuffix(path, "/list-by-condition") {
+	} else if strings.HasSuffix(path, "/list-by-condition") || strings.HasSuffix(path, "/list-by-ids") {
 		relayMode = RelayModeMidjourneyTaskFetchByCondition
 	}
 	return relayMode

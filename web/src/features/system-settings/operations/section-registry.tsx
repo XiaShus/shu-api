@@ -20,6 +20,7 @@ import { SystemBehaviorSection } from '../general/system-behavior-section'
 import { EmailSettingsSection } from '../integrations/email-settings-section'
 import { MonitoringSettingsSection } from '../integrations/monitoring-settings-section'
 import { WorkerSettingsSection } from '../integrations/worker-settings-section'
+import { ObjectStorageSection } from './object-storage-section'
 import { LogSettingsSection } from '../maintenance/log-settings-section'
 import { PerformanceSection } from '../maintenance/performance-section'
 import { UpdateCheckerSection } from '../maintenance/update-checker-section'
@@ -74,6 +75,37 @@ const OPERATIONS_SECTIONS = [
           SMTPStartTLSEnabled: settings.SMTPStartTLSEnabled,
           SMTPInsecureSkipVerify: settings.SMTPInsecureSkipVerify,
           SMTPForceAuthLogin: settings.SMTPForceAuthLogin,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'object-storage',
+    titleKey: 'Object Storage',
+    build: (settings: OperationsSettings) => (
+      <ObjectStorageSection
+        defaultValues={{
+          'object_storage.enabled': settings['object_storage.enabled'] ?? false,
+          'object_storage.image_rewrite_enabled':
+            settings['object_storage.image_rewrite_enabled'] ?? false,
+          'object_storage.gemini_native_rewrite_enabled':
+            settings['object_storage.gemini_native_rewrite_enabled'] ?? false,
+          'object_storage.strict_mode':
+            settings['object_storage.strict_mode'] ?? false,
+          'object_storage.mj_media_persist_enabled':
+            settings['object_storage.mj_media_persist_enabled'] ?? false,
+          'object_storage.user_storage_enabled':
+            settings['object_storage.user_storage_enabled'] ?? true,
+          'object_storage.default_storage_id':
+            settings['object_storage.default_storage_id'] ?? 0,
+          'object_storage.upload_timeout_seconds':
+            settings['object_storage.upload_timeout_seconds'] ?? 30,
+          'object_storage.max_object_bytes':
+            settings['object_storage.max_object_bytes'] ?? 52428800,
+          'object_storage.presign_ttl_seconds':
+            settings['object_storage.presign_ttl_seconds'] ?? 3600,
+          'object_storage.user_storage_max_count':
+            settings['object_storage.user_storage_max_count'] ?? 5,
         }}
       />
     ),

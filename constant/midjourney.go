@@ -21,9 +21,11 @@ const (
 	MjActionLowVariation  = "LOW_VARIATION"
 	MjActionPan           = "PAN"
 	MjActionSwapFace      = "SWAP_FACE"
+	MjActionSwapVideoFace = "SWAP_VIDEO_FACE"
 	MjActionUpload        = "UPLOAD"
 	MjActionVideo         = "VIDEO"
 	MjActionEdits         = "EDITS"
+	MjActionRetexture     = "RETEXTURE"
 )
 
 var MidjourneyModel2Action = map[string]string{
@@ -42,7 +44,9 @@ var MidjourneyModel2Action = map[string]string{
 	"mj_low_variation":  MjActionLowVariation,
 	"mj_pan":            MjActionPan,
 	"swap_face":         MjActionSwapFace,
+	"swap_video_face":   MjActionSwapVideoFace,
 	"mj_upload":         MjActionUpload,
 	"mj_video":          MjActionVideo,
 	"mj_edits":          MjActionEdits,
+	"mj_retexture":      MjActionRetexture,
 }

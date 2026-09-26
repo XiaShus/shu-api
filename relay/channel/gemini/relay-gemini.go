@@ -199,6 +199,8 @@ func geminiStreamHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http
 			}
 		}
 
+		service.RewriteGeminiChatInlineParts(info, &geminiResponse)
+
 		// 更新使用量统计
 		if metadata := geminiResponse.GetUsageMetadata(); dto.HasGeminiUsageMetadataTokens(metadata) {
 			accumulatedUsageMetadata = dto.MergeGeminiUsageMetadataNonZero(accumulatedUsageMetadata, metadata)
@@ -407,9 +409,10 @@ func GeminiChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.R
 		}
 		return &usage, nil
 	}
+	usage := buildUsageFromGeminiResponse(c, info, &geminiResponse)
+	service.RewriteGeminiChatInlineParts(info, &geminiResponse)
 	fullTextResponse := responseGeminiChat2OpenAI(c, &geminiResponse)
 	fullTextResponse.Model = info.UpstreamModelName
-	usage := buildUsageFromGeminiResponse(c, info, &geminiResponse)
 
 	fullTextResponse.Usage = usage
 
@@ -419,6 +422,7 @@ func GeminiChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.R
 		if err != nil {
 			return nil, types.NewError(err, types.ErrorCodeBadResponseBody)
 		}
+		responseBody = service.RewriteOpenAIChatContent(info, responseBody)
 	case types.RelayFormatClaude:
 		convertResult, err := service.ConvertResponse(c, info, types.RelayFormatClaude, fullTextResponse)
 		if err != nil {
@@ -431,6 +435,10 @@ func GeminiChatHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.R
 		responseBody = claudeRespStr
 	case types.RelayFormatGemini:
 		break
+	}
+
+	if rewriteErr := service.ImageStorageStrictError(info); rewriteErr != nil {
+		return nil, rewriteErr
 	}
 
 	service.IOCopyBytesGracefully(c, resp, responseBody)
@@ -517,6 +525,10 @@ func GeminiImageHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.
 	jsonResponse, jsonErr := common.Marshal(openAIResponse)
 	if jsonErr != nil {
 		return nil, types.NewError(jsonErr, types.ErrorCodeBadResponseBody)
+	}
+	jsonResponse = service.RewriteOpenAIImageResponse(info, jsonResponse)
+	if rewriteErr := service.ImageStorageStrictError(info); rewriteErr != nil {
+		return nil, rewriteErr
 	}
 
 	c.Writer.Header().Set("Content-Type", "application/json")

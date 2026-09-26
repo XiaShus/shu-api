@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -22,14 +23,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 )
-
-func CovertMjpActionToModelName(mjAction string) string {
-	modelName := "mj_" + strings.ToLower(mjAction)
-	if mjAction == constant.MjActionSwapFace {
-		modelName = "swap_face"
-	}
-	return modelName
-}
 
 // PrepareMidjourneyTaskBilling sets the durable refund marker before the task is inserted.
 func PrepareMidjourneyTaskBilling(relayInfo *relaycommon.RelayInfo, task *model.Midjourney, quota int, shouldBill bool) (bool, error) {
@@ -155,6 +148,8 @@ func GetMjRequestModel(relayMode int, midjRequest *dto.MidjourneyRequest) (strin
 			action = constant.MjActionVideo
 		case relayconstant.RelayModeMidjourneyEdits:
 			action = constant.MjActionEdits
+		case relayconstant.RelayModeMidjourneyRetexture:
+			action = constant.MjActionRetexture
 		case relayconstant.RelayModeMidjourneyDescribe:
 			action = constant.MjActionDescribe
 		case relayconstant.RelayModeMidjourneyBlend:
@@ -167,6 +162,8 @@ func GetMjRequestModel(relayMode int, midjRequest *dto.MidjourneyRequest) (strin
 			action = constant.MjActionModal
 		case relayconstant.RelayModeSwapFace:
 			action = constant.MjActionSwapFace
+		case relayconstant.RelayModeSwapVideoFace:
+			action = constant.MjActionSwapVideoFace
 		case relayconstant.RelayModeMidjourneyUpload:
 			action = constant.MjActionUpload
 		case relayconstant.RelayModeMidjourneySimpleChange:
@@ -175,7 +172,7 @@ func GetMjRequestModel(relayMode int, midjRequest *dto.MidjourneyRequest) (strin
 				return "", MidjourneyErrorWrapper(constant.MjRequestError, "invalid_request"), false
 			}
 			action = params.Action
-		case relayconstant.RelayModeMidjourneyTaskFetch, relayconstant.RelayModeMidjourneyTaskFetchByCondition, relayconstant.RelayModeMidjourneyNotify:
+		case relayconstant.RelayModeMidjourneyTaskFetch, relayconstant.RelayModeMidjourneyTaskFetchByCondition, relayconstant.RelayModeMidjourneyNotify, relayconstant.RelayModeMidjourneyTaskCancel:
 			return "", nil, true
 		default:
 			return "", MidjourneyErrorWrapper(constant.MjRequestError, "unknown_relay_action"), false
@@ -192,6 +189,9 @@ func CoverPlusActionToNormalAction(midjRequest *dto.MidjourneyRequest) *dto.Midj
 		return MidjourneyErrorWrapper(constant.MjRequestError, "custom_id_is_required")
 	}
 	splits := strings.Split(customId, "::")
+	if len(splits) < 2 {
+		return MidjourneyErrorWrapper(constant.MjRequestError, "unknown_action")
+	}
 	var action string
 	if splits[1] == "JOB" {
 		action = splits[2]
@@ -238,6 +238,15 @@ func CoverPlusActionToNormalAction(midjRequest *dto.MidjourneyRequest) *dto.Midj
 	} else if action == "Inpaint" {
 		midjRequest.Action = constant.MjActionInPaint
 		midjRequest.Index = 1
+	} else if strings.Contains(strings.ToLower(action), "video") || strings.Contains(strings.ToLower(action), "animate") {
+		midjRequest.Action = constant.MjActionVideo
+		midjRequest.Index = 1
+	} else if strings.Contains(strings.ToLower(action), "retexture") {
+		midjRequest.Action = constant.MjActionRetexture
+		midjRequest.Index = 1
+	} else if strings.EqualFold(action, "edit") {
+		midjRequest.Action = constant.MjActionEdits
+		midjRequest.Index = 1
 	} else {
 		return MidjourneyErrorWrapper(constant.MjRequestError, "unknown_action:"+customId)
 	}
@@ -281,9 +290,29 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 	var mapResult map[string]any
 	// if get request, no need to read request body
 	if c.Request.Method != "GET" {
-		err := json.NewDecoder(c.Request.Body).Decode(&mapResult)
-		if err != nil {
-			return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, err
+		contentType := c.Request.Header.Get("Content-Type")
+		if strings.HasPrefix(strings.ToLower(contentType), "multipart/") {
+			return DoMidjourneyRawHttpRequest(c, timeout, fullRequestURL)
+		}
+		bodyReader, readErr := common.GetRequestBody(c)
+		if readErr != nil {
+			return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, readErr
+		}
+		reader, ok := bodyReader.(io.Reader)
+		if !ok {
+			return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, fmt.Errorf("request body is not readable")
+		}
+		raw, readErr := io.ReadAll(reader)
+		if readErr != nil {
+			return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, readErr
+		}
+		if len(bytes.TrimSpace(raw)) == 0 {
+			mapResult = map[string]any{}
+		} else {
+			err := common.Unmarshal(raw, &mapResult)
+			if err != nil {
+				return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, err
+			}
 		}
 		if !setting.MjAccountFilterEnabled {
 			delete(mapResult, "accountFilter")
@@ -291,10 +320,8 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 		if !setting.MjNotifyEnabled {
 			delete(mapResult, "notifyHook")
 		}
-		//req, err := http.NewRequest(c.Request.Method, fullRequestURL, requestBody)
-		// make new request with mapResult
 	}
-	if setting.MjModeClearEnabled {
+	if setting.MjModeClearEnabled && !setting.MjModePathPrefixEnabled {
 		if prompt, ok := mapResult["prompt"].(string); ok {
 			prompt = strings.Replace(prompt, "--fast", "", -1)
 			prompt = strings.Replace(prompt, "--relax", "", -1)
@@ -361,6 +388,58 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 	//for k, v := range resp.Header {
 	//	c.Writer.Header().Set(k, v[0])
 	//}
+	return &dto.MidjourneyResponseWithStatusCode{
+		StatusCode: statusCode,
+		Response:   midjResponse,
+	}, responseBody, nil
+}
+
+func DoMidjourneyRawHttpRequest(c *gin.Context, timeout time.Duration, fullRequestURL string) (*dto.MidjourneyResponseWithStatusCode, []byte, error) {
+	var nullBytes []byte
+	bodyReader, err := common.GetRequestBody(c)
+	if err != nil {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, err
+	}
+	reader, ok := bodyReader.(io.Reader)
+	if !ok {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, fmt.Errorf("request body is not readable")
+	}
+	raw, err := io.ReadAll(reader)
+	if err != nil {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_request_body_failed", http.StatusInternalServerError), nullBytes, err
+	}
+	req, err := http.NewRequest(c.Request.Method, fullRequestURL, bytes.NewReader(raw))
+	if err != nil {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "create_request_failed", http.StatusInternalServerError), nullBytes, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	req = req.WithContext(ctx)
+	req.Header.Set("Content-Type", c.Request.Header.Get("Content-Type"))
+	req.Header.Set("Accept", c.Request.Header.Get("Accept"))
+	auth := common.GetContextKeyString(c, constant.ContextKeyChannelKey)
+	if auth != "" {
+		auth = strings.TrimPrefix(auth, "Bearer ")
+		req.Header.Set("mj-api-secret", auth)
+	}
+	defer cancel()
+	resp, err := GetHttpClient().Do(req)
+	if err != nil {
+		common.SysLog("do request failed: " + err.Error())
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "do_request_failed", http.StatusInternalServerError), nullBytes, err
+	}
+	statusCode := resp.StatusCode
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_response_body_failed", statusCode), nullBytes, err
+	}
+	CloseResponseBodyGracefully(resp)
+	var midjResponse dto.MidjourneyResponse
+	if len(responseBody) == 0 {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "empty_response_body", statusCode), responseBody, nil
+	}
+	if unmarshalErr := common.Unmarshal(responseBody, &midjResponse); unmarshalErr != nil {
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "unmarshal_response_body_failed", statusCode), responseBody, unmarshalErr
+	}
 	return &dto.MidjourneyResponseWithStatusCode{
 		StatusCode: statusCode,
 		Response:   midjResponse,

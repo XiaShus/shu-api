@@ -290,3 +290,10 @@ custom_oauth.name_empty: "Provider name cannot be empty"
 custom_oauth.has_bindings: "Cannot delete provider with existing user bindings"
 custom_oauth.binding_not_found: "OAuth binding not found"
 custom_oauth.provider_id_field_invalid: "Could not extract user ID from provider response"
+
+# Image storage
+image_storage.not_found: "Image storage not found"
+image_storage.limit_reached: "Image storage limit reached"
+image_storage.user_disabled: "User image storage is disabled"
+image_storage.invalid_endpoint: "User storage endpoint must use HTTPS"
+image_storage.test_failed: "Image storage connectivity test failed"

@@ -282,6 +282,10 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycom
 	if err != nil {
 		return nil, types.NewError(fmt.Errorf("replicate adaptor: encode response failed: %w", err), types.ErrorCodeBadResponseBody)
 	}
+	responseBytes = service.RewriteOpenAIImageResponse(info, responseBytes)
+	if rewriteErr := service.ImageStorageStrictError(info); rewriteErr != nil {
+		return nil, rewriteErr
+	}
 
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(http.StatusOK)

@@ -221,6 +221,8 @@ function DrawingLogsCard<TData>({
           primaryOnly
         />
         <SummaryField label={t('Image')} cell={cells.get('image_url')} />
+        <SummaryField label={t('Video')} cell={cells.get('video_url')} />
+        <SummaryField label={t('Mode')} cell={cells.get('mode')} />
         <SummaryField
           label={t('Prompt')}
           cell={cells.get('prompt')}

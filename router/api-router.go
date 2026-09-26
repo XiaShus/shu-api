@@ -284,6 +284,18 @@ func SetApiRouter(router *gin.Engine) {
 			tokenRoute.POST("/batch/keys", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetTokenKeysBatch)
 		}
 
+		imageStorageRoute := apiRouter.Group("/image_storage")
+		imageStorageRoute.Use(middleware.UserAuth())
+		{
+			imageStorageRoute.GET("/", controller.GetImageStorages)
+			imageStorageRoute.GET("/:id", controller.GetImageStorage)
+			imageStorageRoute.POST("/", controller.AddImageStorage)
+			imageStorageRoute.PUT("/:id", controller.UpdateImageStorage)
+			imageStorageRoute.DELETE("/:id", controller.DeleteImageStorage)
+			imageStorageRoute.POST("/:id/test", controller.TestImageStorage)
+			imageStorageRoute.POST("/:id/reset_key", controller.ResetImageStorageKey)
+		}
+
 		usageRoute := apiRouter.Group("/usage")
 		usageRoute.Use(middleware.CORS(), middleware.CriticalRateLimit())
 		{

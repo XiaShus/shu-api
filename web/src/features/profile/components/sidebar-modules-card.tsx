@@ -127,6 +127,11 @@ export function SidebarModulesCard() {
           description: t('Personal info settings'),
         },
         {
+          key: 'image_storage',
+          title: t('Object Storage'),
+          description: t('Personal S3-compatible buckets for generated images'),
+        },
+        {
           key: 'security',
           title: t('Security & Access'),
           description: t('Manage your security settings and account access'),

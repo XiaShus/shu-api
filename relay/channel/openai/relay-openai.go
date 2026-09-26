@@ -351,6 +351,13 @@ func OpenaiHandler(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Respo
 		responseBody = geminiRespStr
 	}
 
+	if info.RelayFormat == types.RelayFormatOpenAI {
+		responseBody = service.RewriteOpenAIChatContent(info, responseBody)
+		if err := service.ImageStorageStrictError(info); err != nil {
+			return nil, err
+		}
+	}
+
 	service.IOCopyBytesGracefully(c, resp, responseBody)
 
 	return &simpleResponse.Usage, nil

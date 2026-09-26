@@ -20,6 +20,7 @@ import {
   Activity,
   Box,
   ClipboardList,
+  Cloud,
   CreditCard,
   FileText,
   FlaskConical,
@@ -120,6 +121,11 @@ export function useSidebarData(): SidebarData {
             title: t('Profile'),
             url: '/profile',
             icon: User,
+          },
+          {
+            title: t('Object Storage'),
+            url: '/image-storages',
+            icon: Cloud,
           },
           {
             title: t('Security & Access'),

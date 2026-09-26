@@ -433,8 +433,11 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 		if relayMode == relayconstant.RelayModeMidjourneyTaskFetch ||
 			relayMode == relayconstant.RelayModeMidjourneyTaskFetchByCondition ||
 			relayMode == relayconstant.RelayModeMidjourneyNotify ||
-			relayMode == relayconstant.RelayModeMidjourneyTaskImageSeed {
+			relayMode == relayconstant.RelayModeMidjourneyTaskImageSeed ||
+			relayMode == relayconstant.RelayModeMidjourneyTaskCancel {
 			shouldSelectChannel = false
+		} else if relayMode == relayconstant.RelayModeSwapVideoFace {
+			modelRequest.Model = "swap_video_face"
 		} else {
 			midjourneyRequest := taskdto.MidjourneyRequest{}
 			err = common.UnmarshalBodyReusable(c, &midjourneyRequest)

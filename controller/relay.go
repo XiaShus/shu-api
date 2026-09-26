@@ -24,6 +24,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/bytedance/gopkg/util/gopool"
@@ -108,6 +109,8 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		}
 	}()
 
+	cdnKey := helper.ExtractCdnKey(c)
+
 	request, err := helper.GetAndValidateRequest(c, relayFormat)
 	if err != nil {
 		// Map "request body too large" to 413 so clients can handle it correctly
@@ -123,6 +126,9 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	if err != nil {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
 		return
+	}
+	if cdnKey != "" {
+		relayInfo.CdnKey = cdnKey
 	}
 
 	if newAPIError = relay.PrepareRequestBilling(c, relayInfo); newAPIError != nil {
@@ -291,6 +297,24 @@ func processChannelError(c *gin.Context, channelError types.ChannelError, err *t
 }
 
 func RelayMidjourney(c *gin.Context) {
+	relayMode := relayconstant.Path2RelayModeMidjourney(c.Request.URL.Path)
+	if relayMode == relayconstant.RelayModeUnknown {
+		relayMode = c.GetInt("relay_mode")
+	}
+	if relayMode == relayconstant.RelayModeMidjourneyNotify {
+		if !setting.MjNotifyEnabled {
+			c.JSON(http.StatusForbidden, gin.H{
+				"description": "notify_disabled",
+				"type":        "upstream_error",
+				"code":        4,
+			})
+			return
+		}
+		mjErr := relay.RelayMidjourneyNotify(c)
+		writeMidjourneyRelayError(c, mjErr)
+		return
+	}
+
 	relayInfo, err := relaycommon.GenRelayInfo(c, types.RelayFormatMjProxy, nil, nil)
 
 	if err != nil {
@@ -304,33 +328,42 @@ func RelayMidjourney(c *gin.Context) {
 
 	var mjErr *taskdto.MidjourneyResponse
 	switch relayInfo.RelayMode {
-	case relayconstant.RelayModeMidjourneyNotify:
-		mjErr = relay.RelayMidjourneyNotify(c)
 	case relayconstant.RelayModeMidjourneyTaskFetch, relayconstant.RelayModeMidjourneyTaskFetchByCondition:
 		mjErr = relay.RelayMidjourneyTask(c, relayInfo.RelayMode)
 	case relayconstant.RelayModeMidjourneyTaskImageSeed:
 		mjErr = relay.RelayMidjourneyTaskImageSeed(c)
+	case relayconstant.RelayModeMidjourneyTaskCancel:
+		mjErr = relay.RelayMidjourneyCancel(c)
 	case relayconstant.RelayModeSwapFace:
 		mjErr = relay.RelaySwapFace(c, relayInfo)
+	case relayconstant.RelayModeSwapVideoFace:
+		mjErr = relay.RelaySwapVideoFace(c, relayInfo)
 	default:
 		mjErr = relay.RelayMidjourneySubmit(c, relayInfo)
 	}
-	//err = relayMidjourneySubmit(c, relayMode)
+	writeMidjourneyRelayError(c, mjErr)
+}
+
+func writeMidjourneyRelayError(c *gin.Context, mjErr *taskdto.MidjourneyResponse) {
 	log.Println(mjErr)
-	if mjErr != nil {
-		statusCode := http.StatusBadRequest
-		if mjErr.Code == 30 {
-			mjErr.Result = "当前分组负载已饱和，请稍后再试，或升级账户以提升服务质量。"
-			statusCode = http.StatusTooManyRequests
-		}
-		c.JSON(statusCode, gin.H{
-			"description": fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result),
-			"type":        "upstream_error",
-			"code":        mjErr.Code,
-		})
-		channelId := c.GetInt("channel_id")
-		logger.LogError(c, fmt.Sprintf("relay error (channel #%d, status code %d): %s", channelId, statusCode, fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result)))
+	if mjErr == nil {
+		return
 	}
+	statusCode := http.StatusBadRequest
+	if mjErr.Code == 30 {
+		mjErr.Result = "当前分组负载已饱和，请稍后再试，或升级账户以提升服务质量。"
+		statusCode = http.StatusTooManyRequests
+	}
+	if mjErr.Code == 403 {
+		statusCode = http.StatusForbidden
+	}
+	c.JSON(statusCode, gin.H{
+		"description": fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result),
+		"type":        "upstream_error",
+		"code":        mjErr.Code,
+	})
+	channelId := c.GetInt("channel_id")
+	logger.LogError(c, fmt.Sprintf("relay error (channel #%d, status code %d): %s", channelId, statusCode, fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result)))
 }
 
 func RelayNotImplemented(c *gin.Context) {

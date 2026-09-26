@@ -289,6 +289,10 @@ export interface MidjourneyLog {
   buttons?: string
   properties?: string
   image_url?: string
+  video_url?: string
+  video_urls?: string
+  mode?: string
+  media_stored?: boolean
   status: string // NOT_START, SUBMITTED, IN_PROGRESS, SUCCESS, FAILURE, MODAL
   other?: string
   created_at?: number

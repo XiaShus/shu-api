@@ -142,6 +142,8 @@ export const MJ_TASK_TYPES = {
   REROLL: 'REROLL', // 重绘
   INPAINT: 'INPAINT', // 局部重绘
   SWAP_FACE: 'SWAP_FACE', // 换脸
+  SWAP_VIDEO_FACE: 'SWAP_VIDEO_FACE', // 视频换脸
+  RETEXTURE: 'RETEXTURE', // 重绘纹理
   ZOOM: 'ZOOM', // 缩放
   CUSTOM_ZOOM: 'CUSTOM_ZOOM', // 自定义缩放
   MODAL: 'MODAL', // 窗口
@@ -246,8 +248,14 @@ export const MJ_TASK_TYPE_MAPPINGS: Record<string, StatusMapping> = {
   [MJ_TASK_TYPES.REROLL]: { label: 'Reroll', variant: 'indigo' },
   [MJ_TASK_TYPES.INPAINT]: { label: 'Inpaint', variant: 'teal' },
   [MJ_TASK_TYPES.SWAP_FACE]: { label: 'Swap Face', variant: 'purple' },
+  [MJ_TASK_TYPES.SWAP_VIDEO_FACE]: {
+    label: 'Swap Video Face',
+    variant: 'purple',
+  },
+  [MJ_TASK_TYPES.RETEXTURE]: { label: 'Retexture', variant: 'teal' },
   [MJ_TASK_TYPES.ZOOM]: { label: 'Zoom', variant: 'green' },
   [MJ_TASK_TYPES.CUSTOM_ZOOM]: { label: 'Custom Zoom', variant: 'green' },
+  [MJ_TASK_TYPES.MODAL]: { label: 'Modal', variant: 'amber' },
 }
 
 /**

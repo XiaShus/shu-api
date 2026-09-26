@@ -132,6 +132,10 @@ export function SidebarModulesSection({
         title: t('Profile'),
         description: t('Personal settings and profile management.'),
       },
+      image_storage: {
+        title: t('Object Storage'),
+        description: t('Personal S3-compatible buckets for generated images'),
+      },
       security: {
         title: t('Security & Access'),
         description: t('Manage your security settings and account access'),
