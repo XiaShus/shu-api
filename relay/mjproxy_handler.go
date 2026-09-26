@@ -205,6 +205,11 @@ func RelayMidjourneyNotify(c *gin.Context) *dto.MidjourneyResponse {
 	midjourneyTask.VideoUrls = string(videoUrlsStr)
 	midjourneyTask.Status = midjRequest.Status
 	midjourneyTask.FailReason = midjRequest.FailReason
+	if storage, storageErr := common.GetBodyStorage(c); storageErr == nil {
+		if raw, rawErr := storage.Bytes(); rawErr == nil {
+			service.RememberMidjourneyUpstream(midjourneyTask, raw)
+		}
+	}
 	err = midjourneyTask.Update()
 	if err != nil {
 		return &dto.MidjourneyResponse{
@@ -368,7 +373,7 @@ func RelaySwapFace(c *gin.Context, info *relaycommon.RelayInfo) *dto.MidjourneyR
 	if billingApplied {
 		billingChannelId := midjourneyTask.GetBillingChannelId()
 		tokenName := c.GetString("token_name")
-		logContent := fmt.Sprintf("模型固定价格 %.2f，分组倍率 %.2f，操作 %s", priceData.ModelPrice, priceData.GroupRatioInfo.GroupRatio, constant.MjActionSwapFace)
+		logContent := service.FormatMjConsumeLogContent(info, priceData, fmt.Sprintf("操作 %s", constant.MjActionSwapFace))
 		other := service.GenerateMjOtherInfo(info, priceData)
 		service.AppendRelayLogAdminInfo(c, info, other)
 		model.RecordConsumeLog(c, info.UserId, model.RecordConsumeLogParams{
@@ -519,7 +524,7 @@ func RelaySwapVideoFace(c *gin.Context, info *relaycommon.RelayInfo) *dto.Midjou
 			ModelName: modelName,
 			TokenName: c.GetString("token_name"),
 			Quota:     midjourneyTask.Quota,
-			Content:   fmt.Sprintf("模型固定价格 %.2f，分组倍率 %.2f，操作 %s", priceData.ModelPrice, priceData.GroupRatioInfo.GroupRatio, constant.MjActionSwapVideoFace),
+			Content:   service.FormatMjConsumeLogContent(info, priceData, fmt.Sprintf("操作 %s", constant.MjActionSwapVideoFace)),
 			TokenId:   midjourneyTask.TokenId,
 			Group:     info.UsingGroup,
 			Other:     other,
@@ -552,8 +557,9 @@ func RelayMidjourneyTask(c *gin.Context, relayMode int) *dto.MidjourneyResponse 
 				Description: "task_no_found",
 			}
 		}
+		service.FillMidjourneyUpstreamPayloads([]*model.Midjourney{originTask})
 		midjourneyTask := coverMidjourneyTaskDto(c, originTask)
-		respBody, err = common.Marshal(midjourneyTask)
+		respBody, err = service.MarshalMidjourneyTaskResponse(originTask, midjourneyTask)
 		if err != nil {
 			return &dto.MidjourneyResponse{
 				Code:        4,
@@ -571,18 +577,23 @@ func RelayMidjourneyTask(c *gin.Context, relayMode int) *dto.MidjourneyResponse 
 				Description: "do_request_failed",
 			}
 		}
-		var tasks []dto.MidjourneyDto
+		var parts [][]byte
 		if len(condition.IDs) != 0 {
 			originTasks := model.GetByMJIds(userId, condition.IDs)
+			service.FillMidjourneyUpstreamPayloads(originTasks)
 			for _, originTask := range originTasks {
 				midjourneyTask := coverMidjourneyTaskDto(c, originTask)
-				tasks = append(tasks, midjourneyTask)
+				part, marshalErr := service.MarshalMidjourneyTaskResponse(originTask, midjourneyTask)
+				if marshalErr != nil {
+					return &dto.MidjourneyResponse{
+						Code:        4,
+						Description: "unmarshal_response_body_failed",
+					}
+				}
+				parts = append(parts, part)
 			}
 		}
-		if tasks == nil {
-			tasks = make([]dto.MidjourneyDto, 0)
-		}
-		respBody, err = common.Marshal(tasks)
+		respBody, err = service.MarshalMidjourneyTaskArray(parts)
 		if err != nil {
 			return &dto.MidjourneyResponse{
 				Code:        4,
@@ -876,7 +887,7 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 	if billingApplied {
 		billingChannelId := midjourneyTask.GetBillingChannelId()
 		tokenName := c.GetString("token_name")
-		logContent := fmt.Sprintf("模型固定价格 %.2f，分组倍率 %.2f，操作 %s，ID %s", priceData.ModelPrice, priceData.GroupRatioInfo.GroupRatio, midjRequest.Action, midjResponse.Result)
+		logContent := service.FormatMjConsumeLogContent(relayInfo, priceData, fmt.Sprintf("操作 %s", midjRequest.Action), fmt.Sprintf("ID %s", midjResponse.Result))
 		other := service.GenerateMjOtherInfo(relayInfo, priceData)
 		service.AppendRelayLogAdminInfo(c, relayInfo, other)
 		model.RecordConsumeLog(c, relayInfo.UserId, model.RecordConsumeLogParams{
@@ -936,17 +947,34 @@ func getMjRequestPath(path, mode string) string {
 		query = requestURL[i:]
 		requestURL = requestURL[:i]
 	}
+	original := requestURL
 	if strings.Contains(requestURL, "/mj/") {
 		urls := strings.SplitN(requestURL, "/mj/", 2)
 		if len(urls) >= 2 {
 			requestURL = "/mj/" + urls[1]
 		}
 	}
-	normalized := service.NormalizeMjMode(mode)
-	if setting.MjModePathPrefixEnabled && (normalized == setting.MjModeFast || normalized == setting.MjModeRelax || normalized == setting.MjModeTurbo) {
-		requestURL = "/mj-" + normalized + requestURL
+	if setting.MjModePathPrefixEnabled {
+		requestURL = applyMjModePathPrefix(requestURL, original, mode)
 	}
 	return requestURL + query
+}
+
+// applyMjModePathPrefix only rewrites relax/turbo, or an explicit /mj-fast client
+// path. Implicit default FAST stays on /mj/: classic mj-proxy has no /mj-fast
+// routes, and trueai already treats /mj/ as FAST.
+func applyMjModePathPrefix(requestURL, original, mode string) string {
+	normalized := service.NormalizeMjMode(mode)
+	switch normalized {
+	case setting.MjModeRelax, setting.MjModeTurbo:
+		return "/mj-" + normalized + requestURL
+	case setting.MjModeFast:
+		lower := strings.ToLower(original)
+		if strings.Contains(lower, "/mj-fast/") || strings.Contains(lower, "/fast/mj/") {
+			return "/mj-fast" + requestURL
+		}
+	}
+	return requestURL
 }
 
 func mjModeOf(info *relaycommon.RelayInfo) string {

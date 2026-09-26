@@ -50,6 +50,7 @@ import {
   mjSubmitResultMapper,
 } from '../../lib/mappers'
 import type { MidjourneyLog } from '../../types'
+import { DrawingTaskDetailsDialog } from '../dialogs/drawing-task-details-dialog'
 import { ImageDialog } from '../dialogs/image-dialog'
 import { PromptDialog } from '../dialogs/prompt-dialog'
 import {
@@ -235,6 +236,31 @@ export function useDrawingLogsColumns(
         },
       })
     }
+
+    columns.push({
+      id: 'details',
+      header: t('Details'),
+      cell: function DetailsCell({ row }) {
+        const log = row.original
+        const [dialogOpen, setDialogOpen] = useState(false)
+        return (
+          <>
+            <button
+              type='button'
+              className='text-foreground text-xs font-medium hover:underline'
+              onClick={() => setDialogOpen(true)}
+            >
+              {t('View details')}
+            </button>
+            <DrawingTaskDetailsDialog
+              log={log}
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+            />
+          </>
+        )
+      },
+    })
 
     columns.push(
       createProgressColumn<MidjourneyLog>({ headerLabel: t('Progress') }),

@@ -226,6 +226,7 @@ export type ContentSettings = {
   MjActionCheckSuccessEnabled: boolean
   MjModePathPrefixEnabled: boolean
   MjModeRatio: string
+  MjHdRatio: number
   MjGroupModePolicy: string
 }
 

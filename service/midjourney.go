@@ -3,6 +3,7 @@ package service
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -306,6 +307,38 @@ func RecordMidjourneyPolicyResponse(c *gin.Context, response *dto.MidjourneyResp
 	return false
 }
 
+func midjourneyUnmarshalFailed(statusCode int, body []byte, err error, requestURL string) (*dto.MidjourneyResponseWithStatusCode, []byte, error) {
+	preview := strings.ToValidUTF8(string(body), "")
+	if len(preview) > 256 {
+		preview = preview[:256]
+	}
+	desc := describeMidjourneyNonJSONBody(statusCode, body)
+	common.SysLog(fmt.Sprintf("midjourney unmarshal failed: status=%d url=%s err=%v desc=%s body=%q", statusCode, relaycommon.SanitizeURLForLog(requestURL), err, desc, preview))
+	return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, desc, statusCode), body, err
+}
+
+func describeMidjourneyNonJSONBody(statusCode int, body []byte) string {
+	trimmed := bytes.TrimSpace(body)
+	lower := bytes.ToLower(trimmed)
+	isHTML := bytes.HasPrefix(lower, []byte("<!doctype html")) || bytes.Contains(lower, []byte("<html"))
+	if !isHTML {
+		return fmt.Sprintf("unmarshal_response_body_failed (status %d)", statusCode)
+	}
+	text := string(body)
+	if strings.Contains(text, "域名尚未添加至白名单") || strings.Contains(text, "请勿直接使用IP") {
+		return "upstream_blocked: 上游返回机房域名白名单拦截页，请把渠道 API 地址改成已加白名单的域名，不要用 IP 访问"
+	}
+	if _, title, ok := strings.Cut(text, "<title>"); ok {
+		if title, _, ok = strings.Cut(title, "</title>"); ok {
+			title = strings.TrimSpace(title)
+			if title != "" {
+				return fmt.Sprintf("upstream_returned_html (status %d): %s", statusCode, title)
+			}
+		}
+	}
+	return fmt.Sprintf("upstream_returned_html (status %d)", statusCode)
+}
+
 func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestURL string) (*dto.MidjourneyResponseWithStatusCode, []byte, error) {
 	var nullBytes []byte
 	//var requestBody io.Reader
@@ -345,18 +378,22 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 			delete(mapResult, "notifyHook")
 		}
 	}
-	if setting.MjModeClearEnabled && !setting.MjModePathPrefixEnabled {
-		if prompt, ok := mapResult["prompt"].(string); ok {
-			prompt = strings.Replace(prompt, "--fast", "", -1)
-			prompt = strings.Replace(prompt, "--relax", "", -1)
-			prompt = strings.Replace(prompt, "--turbo", "", -1)
+	var reqBody []byte
+	if c.Request.Method != http.MethodGet {
+		if setting.MjModeClearEnabled && !setting.MjModePathPrefixEnabled {
+			if prompt, ok := mapResult["prompt"].(string); ok {
+				prompt = strings.Replace(prompt, "--fast", "", -1)
+				prompt = strings.Replace(prompt, "--relax", "", -1)
+				prompt = strings.Replace(prompt, "--turbo", "", -1)
 
-			mapResult["prompt"] = prompt
+				mapResult["prompt"] = prompt
+			}
 		}
-	}
-	reqBody, err := common.Marshal(mapResult)
-	if err != nil {
-		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "marshal_request_body_failed", http.StatusInternalServerError), nullBytes, err
+		var marshalErr error
+		reqBody, marshalErr = common.Marshal(mapResult)
+		if marshalErr != nil {
+			return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "marshal_request_body_failed", http.StatusInternalServerError), nullBytes, marshalErr
+		}
 	}
 	req, err := http.NewRequest(c.Request.Method, fullRequestURL, strings.NewReader(string(reqBody)))
 	if err != nil {
@@ -405,7 +442,7 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 		if err != nil {
 			err2 := common.Unmarshal(responseBody, &midjourneyUploadsResponse)
 			if err2 != nil {
-				return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "unmarshal_response_body_failed", statusCode), responseBody, err
+				return midjourneyUnmarshalFailed(statusCode, responseBody, err, fullRequestURL)
 			}
 		}
 	}
@@ -462,10 +499,190 @@ func DoMidjourneyRawHttpRequest(c *gin.Context, timeout time.Duration, fullReque
 		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "empty_response_body", statusCode), responseBody, nil
 	}
 	if unmarshalErr := common.Unmarshal(responseBody, &midjResponse); unmarshalErr != nil {
-		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "unmarshal_response_body_failed", statusCode), responseBody, unmarshalErr
+		return midjourneyUnmarshalFailed(statusCode, responseBody, unmarshalErr, fullRequestURL)
 	}
 	return &dto.MidjourneyResponseWithStatusCode{
 		StatusCode: statusCode,
 		Response:   midjResponse,
 	}, responseBody, nil
+}
+
+func ParseMidjourneyTaskList(body []byte) ([]dto.MidjourneyDto, [][]byte, error) {
+	var raws []json.RawMessage
+	if err := common.Unmarshal(body, &raws); err != nil {
+		return nil, nil, err
+	}
+	items := make([]dto.MidjourneyDto, 0, len(raws))
+	copies := make([][]byte, 0, len(raws))
+	for _, raw := range raws {
+		var item dto.MidjourneyDto
+		if err := common.Unmarshal(raw, &item); err != nil {
+			return nil, nil, err
+		}
+		items = append(items, item)
+		copies = append(copies, append([]byte(nil), raw...))
+	}
+	return items, copies, nil
+}
+
+func RememberMidjourneyUpstream(task *model.Midjourney, raw []byte) {
+	if task == nil {
+		return
+	}
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || raw[0] != '{' {
+		return
+	}
+	var obj map[string]any
+	if err := common.Unmarshal(raw, &obj); err != nil || obj == nil {
+		return
+	}
+	task.Payload = model.LongText(raw)
+}
+
+func MidjourneyPayloadChanged(task *model.Midjourney, raw []byte) bool {
+	if task == nil {
+		return false
+	}
+	return strings.TrimSpace(string(task.Payload)) != strings.TrimSpace(string(raw))
+}
+
+func MarshalMidjourneyTaskResponse(origin *model.Midjourney, presented dto.MidjourneyDto) ([]byte, error) {
+	encoded, err := common.Marshal(presented)
+	if err != nil {
+		return nil, err
+	}
+	if origin == nil || strings.TrimSpace(string(origin.Payload)) == "" {
+		return encoded, nil
+	}
+	var upstream map[string]any
+	if err := common.Unmarshal([]byte(origin.Payload), &upstream); err != nil || upstream == nil {
+		return encoded, nil
+	}
+	var ours map[string]any
+	if err := common.Unmarshal(encoded, &ours); err != nil {
+		return encoded, nil
+	}
+	overlayMidjourneyFields(upstream, ours)
+	return common.Marshal(upstream)
+}
+
+func MarshalMidjourneyTaskArray(parts [][]byte) ([]byte, error) {
+	if len(parts) == 0 {
+		return []byte("[]"), nil
+	}
+	var b strings.Builder
+	b.WriteByte('[')
+	for i, part := range parts {
+		if i > 0 {
+			b.WriteByte(',')
+		}
+		b.Write(part)
+	}
+	b.WriteByte(']')
+	return []byte(b.String()), nil
+}
+
+func overlayMidjourneyFields(dst, src map[string]any) {
+	for key, value := range src {
+		if midjourneyJSONEmpty(value) {
+			continue
+		}
+		if srcMap, ok := value.(map[string]any); ok {
+			if dstMap, ok := dst[key].(map[string]any); ok {
+				overlayMidjourneyFields(dstMap, srcMap)
+				continue
+			}
+		}
+		dst[key] = value
+	}
+}
+
+func midjourneyJSONEmpty(value any) bool {
+	if value == nil {
+		return true
+	}
+	switch typed := value.(type) {
+	case string:
+		return typed == ""
+	case float64:
+		return typed == 0
+	case []any:
+		return len(typed) == 0
+	case map[string]any:
+		return len(typed) == 0
+	default:
+		return false
+	}
+}
+
+func FillMidjourneyUpstreamPayloads(tasks []*model.Midjourney) {
+	pending := make(map[int][]*model.Midjourney)
+	for _, task := range tasks {
+		if task == nil || task.ChannelId == 0 || task.MjId == "" || strings.TrimSpace(string(task.Payload)) != "" {
+			continue
+		}
+		pending[task.ChannelId] = append(pending[task.ChannelId], task)
+	}
+	for channelID, group := range pending {
+		fillMidjourneyChannelPayloads(channelID, group)
+	}
+}
+
+func fillMidjourneyChannelPayloads(channelID int, tasks []*model.Midjourney) {
+	channel, err := model.CacheGetChannel(channelID)
+	if err != nil || channel == nil || channel.BaseURL == nil || *channel.BaseURL == "" {
+		return
+	}
+	ids := make([]string, 0, len(tasks))
+	byID := make(map[string]*model.Midjourney, len(tasks))
+	for _, task := range tasks {
+		ids = append(ids, task.MjId)
+		byID[task.MjId] = task
+	}
+	body, err := common.Marshal(map[string]any{"ids": ids})
+	if err != nil {
+		return
+	}
+	requestURL := fmt.Sprintf("%s/mj/task/list-by-condition", *channel.BaseURL)
+	ctx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, bytes.NewReader(body))
+	if err != nil {
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("mj-api-secret", channel.Key)
+	resp, err := GetHttpClient().Do(req)
+	if err != nil {
+		logger.LogError(ctx, fmt.Sprintf("midjourney payload refresh failed: %v", err))
+		return
+	}
+	defer CloseResponseBodyGracefully(resp)
+	if resp.StatusCode != http.StatusOK {
+		logger.LogError(ctx, fmt.Sprintf("midjourney payload refresh status: %d", resp.StatusCode))
+		return
+	}
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	items, raws, err := ParseMidjourneyTaskList(responseBody)
+	if err != nil {
+		logger.LogError(ctx, fmt.Sprintf("midjourney payload refresh parse: %v", err))
+		return
+	}
+	for i, item := range items {
+		task := byID[item.MjId]
+		if task == nil || i >= len(raws) {
+			continue
+		}
+		RememberMidjourneyUpstream(task, raws[i])
+		if strings.TrimSpace(string(task.Payload)) == "" {
+			continue
+		}
+		if err := task.UpdatePayload(); err != nil {
+			logger.LogError(ctx, fmt.Sprintf("midjourney payload save failed: %v", err))
+		}
+	}
 }

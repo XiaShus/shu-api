@@ -2,6 +2,7 @@ package helper
 
 import (
 	"fmt"
+	"math"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -214,27 +215,38 @@ func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens 
 
 // ModelPriceHelperPerCall 按次/按量计费的 PriceHelper (MJ、Task)
 func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (hosttypes.PriceData, error) {
+	if info != nil {
+		if matched := resolveBillingModelName(info.GetOriginModelName()); matched != "" && matched != info.OriginModelName {
+			info.BillingModelName = matched
+		}
+	}
 	groupRatioInfo := HandleGroupRatio(c, info)
 
-	modelPrice, success := ratio_setting.GetModelPrice(info.OriginModelName, true)
-	usePrice := success
+	modelPrice := 0.0
+	usePrice := false
 	var modelRatio float64
 
-	if !success {
-		defaultPrice, ok := ratio_setting.GetDefaultModelPriceMap()[info.OriginModelName]
-		if ok {
-			modelPrice = defaultPrice
-			usePrice = true
-		} else {
-			var ratioSuccess bool
-			var matchName string
-			modelRatio, ratioSuccess, matchName = ratio_setting.GetModelRatio(info.OriginModelName)
-			acceptUnsetRatio := false
-			if info.UserSetting.AcceptUnsetRatioModel {
-				acceptUnsetRatio = true
-			}
-			if !ratioSuccess && !acceptUnsetRatio {
-				return hosttypes.PriceData{}, modelPriceNotConfiguredError(matchName, info.UserId)
+	if price, ok := perCallFixedPriceFromBillingExpr(info); ok {
+		modelPrice = price
+		usePrice = true
+	} else {
+		modelPrice, usePrice = ratio_setting.GetModelPrice(info.GetBillingModelName(), true)
+		if !usePrice {
+			defaultPrice, ok := ratio_setting.GetDefaultModelPriceMap()[info.OriginModelName]
+			if ok {
+				modelPrice = defaultPrice
+				usePrice = true
+			} else {
+				var ratioSuccess bool
+				var matchName string
+				modelRatio, ratioSuccess, matchName = ratio_setting.GetModelRatio(info.OriginModelName)
+				acceptUnsetRatio := false
+				if info.UserSetting.AcceptUnsetRatioModel {
+					acceptUnsetRatio = true
+				}
+				if !ratioSuccess && !acceptUnsetRatio {
+					return hosttypes.PriceData{}, modelPriceNotConfiguredError(matchName, info.UserId)
+				}
 			}
 		}
 	}
@@ -279,6 +291,33 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (hostt
 		GroupRatioInfo: groupRatioInfo,
 	}
 	return priceData, nil
+}
+
+// perCallFixedPriceFromBillingExpr reads a request-unit fixed() leaf from the
+// model-pricing expression. Token-priced expressions stay on the legacy
+// ModelPrice / default-price path so MJ speed and HD multipliers still apply
+// to a USD base instead of a near-zero token reservation.
+func perCallFixedPriceFromBillingExpr(info *relaycommon.RelayInfo) (float64, bool) {
+	if info == nil {
+		return 0, false
+	}
+	billingModelName := info.GetBillingModelName()
+	if billing_setting.GetBillingMode(billingModelName) != billing_setting.BillingModeTieredExpr {
+		return 0, false
+	}
+	exprStr, ok := billing_setting.GetBillingExpr(billingModelName)
+	if !ok || strings.TrimSpace(exprStr) == "" {
+		return 0, false
+	}
+	_, trace, err := billingexpr.RunExpr(exprStr, billingexpr.TokenParams{})
+	if err != nil || trace.BillingUnit != billingexpr.BillingUnitRequest || trace.FixedPrice == nil {
+		return 0, false
+	}
+	price := *trace.FixedPrice
+	if price < 0 || math.IsNaN(price) || math.IsInf(price, 0) {
+		return 0, false
+	}
+	return price, true
 }
 
 func HasModelBillingConfig(modelName string) bool {

@@ -319,6 +319,31 @@ func GenerateClaudeOtherInfo(ctx *gin.Context, relayInfo *relaycommon.RelayInfo,
 	return info
 }
 
+func FormatMjConsumeLogContent(relayInfo *relaycommon.RelayInfo, priceData hosttypes.PriceData, extras ...string) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "模型固定价格 %.2f，分组倍率 %.2f", priceData.ModelPrice, priceData.GroupRatioInfo.GroupRatio)
+	if relayInfo != nil && relayInfo.TaskRelayInfo != nil {
+		task := relayInfo.TaskRelayInfo
+		dedicated := task.MjMode != "" && strings.HasPrefix(relayInfo.OriginModelName, "mj_"+task.MjMode+"_")
+		if !dedicated && task.MjModeRatio > 0 && task.MjModeRatio != 1 {
+			mode := task.MjMode
+			if mode == "" {
+				mode = "mode"
+			}
+			fmt.Fprintf(&b, "，%s倍率 %.2f", mode, task.MjModeRatio)
+		}
+		if task.MjHd && task.MjHdRatio > 0 && task.MjHdRatio != 1 {
+			fmt.Fprintf(&b, "，HD倍率 %.2f", task.MjHdRatio)
+		}
+	}
+	for _, extra := range extras {
+		if extra != "" {
+			fmt.Fprintf(&b, "，%s", extra)
+		}
+	}
+	return b.String()
+}
+
 func GenerateMjOtherInfo(relayInfo *relaycommon.RelayInfo, priceData hosttypes.PriceData) *model.LogOther {
 	other := model.NewLogOther()
 	other.SetPublic("model_price", priceData.ModelPrice)
@@ -336,6 +361,12 @@ func GenerateMjOtherInfo(relayInfo *relaycommon.RelayInfo, priceData hosttypes.P
 		}
 		if relayInfo.TaskRelayInfo.MjModeRatio != 0 {
 			other.SetPublic("mj_mode_ratio", relayInfo.TaskRelayInfo.MjModeRatio)
+		}
+		if relayInfo.TaskRelayInfo.MjHd {
+			other.SetPublic("mj_hd", true)
+			if relayInfo.TaskRelayInfo.MjHdRatio != 0 {
+				other.SetPublic("mj_hd_ratio", relayInfo.TaskRelayInfo.MjHdRatio)
+			}
 		}
 	}
 	return other

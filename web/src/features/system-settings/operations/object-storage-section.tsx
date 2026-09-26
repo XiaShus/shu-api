@@ -17,10 +17,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useMemo } from 'react'
-import { useForm } from 'react-hook-form'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
+import { useForm, type FieldErrors } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import * as z from 'zod'
 
 import {
@@ -53,35 +54,72 @@ import {
 } from '../components/settings-form-layout'
 import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
-import { useUpdateOption } from '../hooks/use-update-option'
+import { updateSystemOption } from '../api'
+import { useResetForm } from '../hooks/use-reset-form'
 import { safeNumberFieldProps } from '../utils/numeric-field'
 
 const objectStorageSchema = z.object({
-  'object_storage.enabled': z.boolean(),
-  'object_storage.image_rewrite_enabled': z.boolean(),
-  'object_storage.gemini_native_rewrite_enabled': z.boolean(),
-  'object_storage.strict_mode': z.boolean(),
-  'object_storage.mj_media_persist_enabled': z.boolean(),
-  'object_storage.user_storage_enabled': z.boolean(),
-  'object_storage.default_storage_id': z.number().int().min(0),
-  'object_storage.upload_timeout_seconds': z.number().int().min(1).max(300),
-  'object_storage.max_object_bytes': z.number().int().min(1),
-  'object_storage.presign_ttl_seconds': z.number().int().min(1),
-  'object_storage.user_storage_max_count': z.number().int().min(1).max(50),
+  enabled: z.boolean(),
+  image_rewrite_enabled: z.boolean(),
+  gemini_native_rewrite_enabled: z.boolean(),
+  strict_mode: z.boolean(),
+  mj_media_persist_enabled: z.boolean(),
+  user_storage_enabled: z.boolean(),
+  default_storage_id: z.number().int().min(0),
+  upload_timeout_seconds: z.number().int().min(1).max(300),
+  max_object_bytes: z.number().int().min(1),
+  presign_ttl_seconds: z.number().int().min(1),
+  user_storage_max_count: z.number().int().min(1).max(50),
 })
 
 export type ObjectStorageFormValues = z.infer<typeof objectStorageSchema>
 
+type ObjectStorageSettings = {
+  'object_storage.enabled': boolean
+  'object_storage.image_rewrite_enabled': boolean
+  'object_storage.gemini_native_rewrite_enabled': boolean
+  'object_storage.strict_mode': boolean
+  'object_storage.mj_media_persist_enabled': boolean
+  'object_storage.user_storage_enabled': boolean
+  'object_storage.default_storage_id': number
+  'object_storage.upload_timeout_seconds': number
+  'object_storage.max_object_bytes': number
+  'object_storage.presign_ttl_seconds': number
+  'object_storage.user_storage_max_count': number
+}
+
 type ObjectStorageSectionProps = {
-  defaultValues: ObjectStorageFormValues
+  defaultValues: ObjectStorageSettings
+}
+
+function toFormValues(settings: ObjectStorageSettings): ObjectStorageFormValues {
+  return {
+    enabled: settings['object_storage.enabled'],
+    image_rewrite_enabled: settings['object_storage.image_rewrite_enabled'],
+    gemini_native_rewrite_enabled:
+      settings['object_storage.gemini_native_rewrite_enabled'],
+    strict_mode: settings['object_storage.strict_mode'],
+    mj_media_persist_enabled: settings['object_storage.mj_media_persist_enabled'],
+    user_storage_enabled: settings['object_storage.user_storage_enabled'],
+    default_storage_id: settings['object_storage.default_storage_id'],
+    upload_timeout_seconds: settings['object_storage.upload_timeout_seconds'],
+    max_object_bytes: settings['object_storage.max_object_bytes'],
+    presign_ttl_seconds: settings['object_storage.presign_ttl_seconds'],
+    user_storage_max_count: settings['object_storage.user_storage_max_count'],
+  }
 }
 
 export function ObjectStorageSection(props: ObjectStorageSectionProps) {
   const { t } = useTranslation()
-  const updateOption = useUpdateOption()
+  const queryClient = useQueryClient()
+  const [isSaving, setIsSaving] = useState(false)
+  const formDefaults = useMemo(
+    () => toFormValues(props.defaultValues),
+    [props.defaultValues]
+  )
   const form = useForm<ObjectStorageFormValues>({
     resolver: zodResolver(objectStorageSchema),
-    defaultValues: props.defaultValues,
+    defaultValues: formDefaults,
   })
   const storagesQuery = useQuery({
     queryKey: ['image-storages', 'system'],
@@ -91,11 +129,9 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
     },
   })
 
-  useEffect(() => {
-    form.reset(props.defaultValues)
-  }, [form, props.defaultValues])
+  useResetForm(form, formDefaults)
 
-  const defaultStorageId = form.watch('object_storage.default_storage_id')
+  const defaultStorageId = form.watch('default_storage_id')
   const storageItems = useMemo(() => {
     const items = [
       { value: '0', label: t('None') },
@@ -115,65 +151,83 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
   }, [defaultStorageId, storagesQuery.data, t])
 
   const onSubmit = async (values: ObjectStorageFormValues) => {
-    const updates = Object.entries(values).filter(
-      ([key, value]) =>
-        value !== props.defaultValues[key as keyof ObjectStorageFormValues]
-    )
-    for (const [key, value] of updates) {
-      await updateOption.mutateAsync({ key, value })
+    setIsSaving(true)
+    try {
+      for (const [key, value] of Object.entries(values)) {
+        requireServerSuccess(
+          await updateSystemOption({ key: `object_storage.${key}`, value })
+        )
+      }
+      await queryClient.invalidateQueries({ queryKey: ['system-options'] })
+      toast.success(t('Setting updated successfully'))
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : t('Failed to update setting')
+      )
+    } finally {
+      setIsSaving(false)
     }
+  }
+
+  const onInvalid = (errors: FieldErrors<ObjectStorageFormValues>) => {
+    const message = Object.values(errors)
+      .map((error) =>
+        error && typeof error.message === 'string' ? error.message : ''
+      )
+      .find((text) => text !== '')
+    toast.error(message || t('Failed to update setting'))
   }
 
   const switches: Array<{
     name: Extract<
       keyof ObjectStorageFormValues,
-      | 'object_storage.enabled'
-      | 'object_storage.image_rewrite_enabled'
-      | 'object_storage.gemini_native_rewrite_enabled'
-      | 'object_storage.strict_mode'
-      | 'object_storage.mj_media_persist_enabled'
-      | 'object_storage.user_storage_enabled'
+      | 'enabled'
+      | 'image_rewrite_enabled'
+      | 'gemini_native_rewrite_enabled'
+      | 'strict_mode'
+      | 'mj_media_persist_enabled'
+      | 'user_storage_enabled'
     >
     label: string
     description: string
   }> = [
     {
-      name: 'object_storage.enabled',
+      name: 'enabled',
       label: t('Enable object storage'),
       description: t(
         'Master switch. Image rewrite and cdn_key uploads are ignored while this is off.'
       ),
     },
     {
-      name: 'object_storage.image_rewrite_enabled',
+      name: 'image_rewrite_enabled',
       label: t('Rewrite image base64 to object URLs'),
       description: t(
         'When no cdn_key is provided, upload generated images to the default system bucket.'
       ),
     },
     {
-      name: 'object_storage.gemini_native_rewrite_enabled',
+      name: 'gemini_native_rewrite_enabled',
       label: t('Rewrite Gemini native inline images'),
       description: t(
         'Replace Gemini inlineData with a file URI after usage is counted.'
       ),
     },
     {
-      name: 'object_storage.strict_mode',
+      name: 'strict_mode',
       label: t('Fail the request when default storage upload fails'),
       description: t(
         'Only applies to the system default bucket. cdn_key requests always fall back to base64.'
       ),
     },
     {
-      name: 'object_storage.mj_media_persist_enabled',
+      name: 'mj_media_persist_enabled',
       label: t('Persist Midjourney media'),
       description: t(
         'When a Midjourney task succeeds, download images and videos into the default system bucket.'
       ),
     },
     {
-      name: 'object_storage.user_storage_enabled',
+      name: 'user_storage_enabled',
       label: t('Allow user-owned buckets'),
       description: t(
         'Users can create personal S3 credentials and pass cdn_key on image requests.'
@@ -185,10 +239,10 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
     <div className='flex flex-col gap-8'>
       <SettingsSection title={t('Object Storage')}>
         <Form {...form}>
-          <SettingsForm onSubmit={form.handleSubmit(onSubmit)}>
+          <SettingsForm onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
             <SettingsPageFormActions
-              onSave={form.handleSubmit(onSubmit)}
-              isSaving={updateOption.isPending}
+              onSave={form.handleSubmit(onSubmit, onInvalid)}
+              isSaving={isSaving}
               saveLabel='Save object storage settings'
             />
             <div className='space-y-4'>
@@ -206,7 +260,9 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
                       <FormControl>
                         <Switch
                           checked={Boolean(field.value)}
-                          onCheckedChange={field.onChange}
+                          onCheckedChange={(checked) =>
+                            field.onChange(checked === true)
+                          }
                         />
                       </FormControl>
                       <FormMessage />
@@ -217,14 +273,18 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
             </div>
             <FormField
               control={form.control}
-              name='object_storage.default_storage_id'
+              name='default_storage_id'
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('Default system bucket')}</FormLabel>
                   <Select
                     items={storageItems}
                     value={String(field.value || 0)}
-                    onValueChange={(value) => field.onChange(Number(value))}
+                    onValueChange={(value) => {
+                      if (typeof value !== 'string') return
+                      const id = Number(value)
+                      if (Number.isInteger(id) && id >= 0) field.onChange(id)
+                    }}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -253,7 +313,7 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
             <div className='grid gap-4 sm:grid-cols-2'>
               <FormField
                 control={form.control}
-                name='object_storage.upload_timeout_seconds'
+                name='upload_timeout_seconds'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('Upload timeout (seconds)')}</FormLabel>
@@ -266,7 +326,7 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
               />
               <FormField
                 control={form.control}
-                name='object_storage.presign_ttl_seconds'
+                name='presign_ttl_seconds'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('Presign TTL (seconds)')}</FormLabel>
@@ -279,7 +339,7 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
               />
               <FormField
                 control={form.control}
-                name='object_storage.max_object_bytes'
+                name='max_object_bytes'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('Max object size (bytes)')}</FormLabel>
@@ -292,7 +352,7 @@ export function ObjectStorageSection(props: ObjectStorageSectionProps) {
               />
               <FormField
                 control={form.control}
-                name='object_storage.user_storage_max_count'
+                name='user_storage_max_count'
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('Max buckets per user')}</FormLabel>

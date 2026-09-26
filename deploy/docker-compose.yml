@@ -1,0 +1,31 @@
+# Sibling stack. Do not replace the 1Panel new-api app on :3000.
+services:
+  redis:
+    image: redis:6-alpine
+    container_name: shu-api-redis
+    restart: always
+    ports:
+      - "127.0.0.1:6375:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    env_file:
+      - .env
+
+  new-api:
+    image: ghcr.io/xiashus/shu-api:shu
+    container_name: shu-api
+    restart: always
+    command: --log-dir /app/logs
+    ports:
+      - "3005:3000"
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    environment:
+      - TZ=Asia/Shanghai
+      - ERROR_LOG_ENABLED=true
+    depends_on:
+      - redis

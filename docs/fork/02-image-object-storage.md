@@ -9,21 +9,25 @@
 ## 2. 决策清单
 
 - 协议：S3 兼容。依赖 `github.com/aws/aws-sdk-go-v2/service/s3` 及其 `config`。七牛 Kodo 端点 `s3.<region>.qiniucs.com`，`path_style=true`。
-- 配置模块名 `object_storage`，`config.GlobalConfig.Register("object_storage", ...)`。option **只存全局开关**，键 `object_storage.<field>`。AK/SK/bucket 不进 option。
-- 统一表 `image_storages`：`user_id=0` 为系统桶，`user_id>0` 为用户桶。每条生成 `cdn_key`。
-- option 字段与默认值：
-  - `enabled` false（总开关；关闭后连 `cdn_key` 也不上传）
-  - `default_storage_id` `0`
-  - `image_rewrite_enabled` `false`（未传 `cdn_key` 时走系统默认桶）
+- 配置模块名 `object_storage`，`config.GlobalConfig.Register("object_storage", ...)`。option 键 `object_storage.<field>`。
+- 字段与默认值：
+  - `enabled` false
+  - `provider` `"s3"`
+  - `endpoint` `""`
+  - `region` `""`
+  - `bucket` `""`
+  - `access_key` `""`
+  - `secret_key` `""`
+  - `prefix` `"images"`
+  - `public_base_url` `""`（空则走 presign）
+  - `presign_ttl_seconds` `3600`
+  - `path_style` `true`
+  - `image_rewrite_enabled` `false`
   - `gemini_native_rewrite_enabled` `false`
-  - `strict_mode` `false`（仅 Source=`default` 时上传失败返回 502 且不计费；`cdn_key` 路径永不因存储报错）
-  - `mj_media_persist_enabled` `false`（MJ **不接** `cdn_key`，只走系统默认桶）
+  - `strict_mode` `false`
+  - `mj_media_persist_enabled` `false`
   - `upload_timeout_seconds` `30`
   - `max_object_bytes` `52428800`
-  - `presign_ttl_seconds` `3600`
-  - `user_storage_enabled` `true`
-  - `user_storage_max_count` `5`
-- 传参：JSON 顶层 `cdn_key` 优先（转发前剥离），header `X-CDN-Key` 兜底。命中失败直接回 base64，**不退到系统默认桶**。
 - 接口：`pkg/objstore.Store` — `Put(ctx context.Context, key, mime string, r io.Reader, size int64) (url string, err error)`。
 - 对象键：`{prefix}/{yyyy}/{mm}/{dd}/{userId}/{uuid}.{ext}`。ext 由 mime 推断，默认 `png`。
 - 改写范围（a+b+c）：
@@ -31,10 +35,10 @@
   - b) Responses 非流式改 `output[].result`；流式在 `image_generation_call` completed 时改 `result`。
   - c) Gemini chat 对 content 字符串调 `RewriteMarkdownDataURIs`（host 侧，**不改 relaykit**）。
   - d) Gemini 原生仅当 `gemini_native_rewrite_enabled=true`：`inlineData` → `fileData{mimeType,fileUri}`。
-- 失败：回退原 base64 + `common.SysError`；日志 `other.image_storage`。`strict_mode=true` 且走系统默认桶时返回 502 且按失败不计费。
+- 失败：回退原 base64 + `common.SysError`；日志 `other.image_storage={persisted,fallback:true}`。`strict_mode=true` 返回 502 且按失败不计费。
 - 计费：保持 `data` 数组长度与 `result` 非空。Gemini 原生重写发生在计数之后。
-- MJ 媒体：`mj_media_persist_enabled` 默认关。SUCCESS 时下载 `image_url`、`video_url` / `video_urls[*].url` 上传并回写。`midjourney` 加 `media_stored` bool（**无** `default` 标签）。`media_stored=true` 不再改写为 `/mj/image/`。失败保留上游 URL。
-- 后台：系统设置 `operations/object-storage`（开关 + 默认桶 + 系统桶 CRUD）。用户页 `/image-storages` 管理个人桶。无需 Casbin。
+- MJ 媒体：`mj_media_persist_enabled` 默认关。轮询转 SUCCESS 时下载 `image_url`、`video_urls[*].url` 上传并回写。`midjourney` 加 `media_stored` bool（**无** `default` 标签）。`media_stored=true` 不再改写为 `/mj/image/`。失败保留上游 URL。
+- 后台：`object-storage-section.tsx` 注册进 integrations。7 个 locale 加键。无需 Casbin。
 
 ## 3. 改动清单
 
@@ -46,11 +50,9 @@
 |---|---|---|---|
 | `setting/system_setting/object_storage.go` | 新增 | `ObjectStorageSetting` + `init()` `Register("object_storage", ...)` + `GetObjectStorageSetting()` | `setting/system_setting/fetch_setting.go` |
 | `pkg/objstore/store.go` | 新增 | `Store` 接口 | — |
-| `pkg/objstore/s3store.go` | 新增 | S3 `Put`/`Delete`：path-style、timeout；公开 URL = `public_base_url` 非空则拼接，否则 presign | aws-sdk-go-v2 s3 |
-| `model/image_storage.go` | 新增 | `image_storages` 表与 CRUD、`cdn_key` | — |
-| `controller/image_storage.go` | 新增 | 用户/系统 CRUD、test、reset_key；`?scope=system` 需 Root | — |
-| `service/image_storage.go` | 新增 | Resolve/Persist/Rewrite* / PersistMidjourneyMedia | `service/image.go` |
-| `relay/helper/cdn_key.go` | 新增 | JSON 剥离 `cdn_key`，header `X-CDN-Key` 兜底 | — |
+| `pkg/objstore/s3store.go` | 新增 | S3 `Put`：path-style、timeout、`max_object_bytes`；公开 URL = `public_base_url` 非空则拼接，否则 presign | aws-sdk-go-v2 s3 |
+| `pkg/objstore/factory.go` | 新增 | 按 `enabled`/`provider` 建单例；配置变更后重建 | — |
+| `service/image_storage.go` | 新增 | `PersistBase64Image`、`RewriteOpenAIImageJSON`（gjson/sjson `data[*].b64_json`→`url` 并删 `b64_json`）、`RewriteResponsesImageResult`、`RewriteMarkdownDataURIs`、`RewriteGeminiInlineData` | `service/image.go` `DecodeBase64ImageData` |
 | `relay/image_handler.go` | 修改 | `ImageHelper`：当 `enabled && image_rewrite_enabled`，用缓冲 `ResponseWriter` 捕获 `DoResponse` 输出 → `RewriteOpenAIImageJSON` → 回写 | 现有 `ImageHelper` |
 | `relay/channel/openai/relay_image.go` | 修改 | `image_generation.completed` 事件重写 `b64_json`；`partial_image_b64` 不动 | `openaiImageJSONAsStreamHandler` |
 | `relay/channel/openai/relay_responses.go` | 修改 | `OaiResponsesHandler` 非流式重写 `output[].result`；`OaiResponsesStreamHandler` completed 时重写 `result` | `ImageGenerationCallCounter` 之后 |
@@ -67,15 +69,13 @@
 
 | 路径 | 新增/修改 | 改什么 | 参照 |
 |---|---|---|---|
-| `web/src/features/image-storages/` | 新增 | 个人桶 CRUD，复制 `cdn_key`，测试连接，轮换密钥 | `features/keys/`（精简） |
-| `web/src/routes/_authenticated/image-storages/index.tsx` | 新增 | `/image-storages` | `security/index.tsx` |
-| `web/src/features/system-settings/operations/object-storage-section.tsx` | 新增 | 开关、默认桶 Select、系统桶 CRUD | `worker-settings-section.tsx` |
-| `web/src/features/system-settings/operations/section-registry.tsx` | 修改 | 注册 section `object-storage` | 同文件 worker |
+| `web/src/features/system-settings/integrations/object-storage-section.tsx` | 新增 | 表单：开关、endpoint/region/bucket/ak/sk、prefix、public_base_url、ttl、path_style、三个 rewrite/mj/strict 开关 | `worker-settings-section.tsx` |
+| `web/src/features/system-settings/integrations/section-registry.tsx` | 修改 | 注册 section `object_storage` | 同文件 worker |
 | `web/src/i18n/locales/{en,zh,zh-TW,fr,ru,ja,vi}.json` | 修改 | 英文明文键：`Object Storage`、`Rewrite image base64 to object URLs`、`Persist Midjourney media` 等 | `bun run i18n:sync` |
 
 ### SQL
 
-无手写 SQL。`image_storages` 与 `MediaStored` 靠 `AutoMigrate`。布尔列不加 `default:true/false`。完成前三库验证（见下）。
+无手写 SQL。`MediaStored` 靠 `AutoMigrate(&Midjourney{})`。布尔列不加 `default:true/false`。完成前三库验证（见下）。
 
 不改 `relaykit/`。
 

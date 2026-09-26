@@ -215,6 +215,7 @@ function DrawingLogsCard<TData>({
           primaryOnly
         />
         <SummaryField label={t('Task ID')} cell={cells.get('mj_id')} />
+        <SummaryField label={t('Details')} cell={cells.get('details')} />
         <SummaryField
           label={t('Duration')}
           cell={cells.get('duration')}

@@ -64,6 +64,7 @@ const drawingSchema = z.object({
   relax: z.number().positive(),
   turbo: z.number().positive(),
   draft: z.number().positive(),
+  hd: z.number().positive(),
   MjGroupModePolicy: z.string().superRefine((value, ctx) => {
     try {
       const parsed: unknown = JSON.parse(value)
@@ -94,6 +95,7 @@ type DrawingSettingsSectionProps = {
     MjActionCheckSuccessEnabled: boolean
     MjModePathPrefixEnabled: boolean
     MjModeRatio: string
+    MjHdRatio: number
     MjGroupModePolicy: string
   }
 }
@@ -132,6 +134,7 @@ function toDrawingFormValues(
     relax: ratio.relax,
     turbo: ratio.turbo,
     draft: ratio.draft,
+    hd: values.MjHdRatio > 0 ? values.MjHdRatio : 2,
     MjGroupModePolicy: values.MjGroupModePolicy || '{}',
   }
 }
@@ -166,7 +169,10 @@ export function DrawingSettingsSection({
     })
 
     const flagKeys: Array<
-      Exclude<keyof DrawingFormValues, 'fast' | 'relax' | 'turbo' | 'draft'>
+      Exclude<
+        keyof DrawingFormValues,
+        'fast' | 'relax' | 'turbo' | 'draft' | 'hd'
+      >
     > = [
       'DrawingEnabled',
       'MjNotifyEnabled',
@@ -185,6 +191,9 @@ export function DrawingSettingsSection({
     }
     if (ratioJson !== currentRatioJson) {
       await updateOption.mutateAsync({ key: 'MjModeRatio', value: ratioJson })
+    }
+    if (values.hd !== current.hd) {
+      await updateOption.mutateAsync({ key: 'MjHdRatio', value: values.hd })
     }
   }
 
@@ -248,7 +257,7 @@ export function DrawingSettingsSection({
       name: 'MjModePathPrefixEnabled',
       label: t('Send mode as /mj-{mode} path prefix'),
       description: t(
-        'Rewrite upstream paths to /mj-fast, /mj-relax, or /mj-turbo. Draft still uses the --draft prompt flag.'
+        'Rewrite relax/turbo (and an explicit /mj-fast client path) to /mj-{mode}. Default FAST stays on /mj/. Draft still uses the --draft prompt flag.'
       ),
     },
   ]
@@ -296,6 +305,11 @@ export function DrawingSettingsSection({
               />
             ))}
           </div>
+          <p className='text-sm text-muted-foreground'>
+            {t(
+              'Charge is model price × speed-mode ratio × HD ratio × group ratio. Set the model price on the model pricing page.'
+            )}
+          </p>
           <div className='grid gap-4 sm:grid-cols-2'>
             {ratioFields.map((item) => (
               <FormField
@@ -324,6 +338,29 @@ export function DrawingSettingsSection({
               />
             ))}
           </div>
+          <FormField
+            control={form.control}
+            name='hd'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>{t('HD (--hd) ratio')}</FormLabel>
+                <FormControl>
+                  <Input
+                    type='number'
+                    min={0.01}
+                    step='0.01'
+                    {...safeNumberFieldProps(field)}
+                  />
+                </FormControl>
+                <FormDescription>
+                  {t(
+                    'Multiplied on top of the speed-mode price when the prompt contains --hd. Default 2 charges double.'
+                  )}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <FormField
             control={form.control}
             name='MjGroupModePolicy'

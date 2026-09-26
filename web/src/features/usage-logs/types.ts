@@ -189,6 +189,11 @@ export interface LogOtherData {
   model_ratio?: number
   completion_ratio?: number
   model_price?: number
+  mj_mode?: string
+  mj_mode_source?: string
+  mj_mode_ratio?: number
+  mj_hd?: boolean
+  mj_hd_ratio?: number
   group_ratio?: number
   user_group_ratio?: number
   cache_ratio?: number
@@ -305,6 +310,7 @@ export interface MidjourneyLog {
   image_url?: string
   video_url?: string
   video_urls?: string
+  payload?: string
   mode?: string
   media_stored?: boolean
   status: string // NOT_START, SUBMITTED, IN_PROGRESS, SUCCESS, FAILURE, MODAL

@@ -1,6 +1,10 @@
 package setting
 
 import (
+	"fmt"
+	"math"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/QuantumNous/new-api/common"
@@ -32,6 +36,7 @@ var mjModeRatio = map[string]float64{
 	MjModeTurbo: 2,
 	MjModeDraft: 0.5,
 }
+var mjHdRatio = 2.0
 var mjGroupModePolicy = map[string]MjGroupModeRule{}
 
 func GetMjModeRatio(mode string) float64 {
@@ -71,6 +76,26 @@ func UpdateMjModeRatioByJSONString(value string) error {
 	}
 	mjModeMu.Lock()
 	mjModeRatio = next
+	mjModeMu.Unlock()
+	return nil
+}
+
+func GetMjHdRatio() float64 {
+	mjModeMu.RLock()
+	defer mjModeMu.RUnlock()
+	if mjHdRatio > 0 {
+		return mjHdRatio
+	}
+	return 2
+}
+
+func UpdateMjHdRatio(value string) error {
+	parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64)
+	if err != nil || parsed <= 0 || math.IsNaN(parsed) || math.IsInf(parsed, 0) {
+		return fmt.Errorf("MjHdRatio must be a positive finite number")
+	}
+	mjModeMu.Lock()
+	mjHdRatio = parsed
 	mjModeMu.Unlock()
 	return nil
 }

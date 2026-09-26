@@ -275,6 +275,30 @@ function buildTypeDetailSegments(
       segments.push({
         text: `${t('Per-call')} · ${formatBillingCurrencyFromUSD(modelPrice, priceOpts)}`,
       })
+      const mjBits: string[] = []
+      if (other.mj_mode) {
+        mjBits.push(other.mj_mode)
+      }
+      if (
+        other.mj_mode_ratio != null &&
+        Number.isFinite(other.mj_mode_ratio) &&
+        other.mj_mode_ratio !== 1
+      ) {
+        mjBits.push(`${formatRatioCompact(other.mj_mode_ratio)}x`)
+      }
+      if (other.mj_hd) {
+        mjBits.push(
+          other.mj_hd_ratio != null && Number.isFinite(other.mj_hd_ratio)
+            ? `HD ${formatRatioCompact(other.mj_hd_ratio)}x`
+            : 'HD'
+        )
+      }
+      if (mjBits.length > 0) {
+        segments.push({
+          text: mjBits.join(' · '),
+          muted: true,
+        })
+      }
     } else if (other.model_ratio != null) {
       const inputPriceUSD = other.model_ratio * 2.0
       const baseEntries = [formatPriceCompact(inputPriceUSD)]

@@ -43,9 +43,6 @@
 | 项 | 决策 |
 |---|---|
 | 对象存储协议 | S3 兼容（七牛 Kodo S3 端点），引入 `aws-sdk-go-v2/service/s3` |
-| 存储配置 | 统一表 `image_storages`（`user_id=0` 系统）；option 只留开关 |
-| `cdn_key` | JSON 顶层优先，header `X-CDN-Key` 兜底；失败回 base64，不退系统默认 |
-| MJ 与 OSS | 不接 `cdn_key`，只走 `mj_media_persist_enabled` + 系统默认桶 |
 | base64 改写范围 | a+b+c：`/v1/images/*` + Responses `image_generation_call` + Gemini chat markdown data URI；Gemini 原生默认不改，另给关闭态开关 |
 | 上传失败 | 回退原 base64 + `SysError`；`strict_mode` 默认关 |
 | MJ 媒体落七牛 | 独立开关 `mj_media_persist_enabled`，默认关 |

@@ -737,6 +737,70 @@ func TestInputPreConsumeMultiplierLegacyAndRequestPrices(t *testing.T) {
 	}
 }
 
+func TestModelPriceHelperPerCallUsesBillingExprFixedPrice(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	saved := map[string]string{}
+	require.NoError(t, config.GlobalConfig.SaveToDB(func(key, value string) error {
+		saved[key] = value
+		return nil
+	}))
+	t.Cleanup(func() {
+		require.NoError(t, config.GlobalConfig.LoadFromDB(saved))
+	})
+
+	require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+		"billing_setting.billing_mode":    `{"mj_imagine":"tiered_expr"}`,
+		"billing_setting.billing_expr":    `{"mj_imagine":"tier(\"base\", fixed(0.15))"}`,
+		"group_ratio_setting.group_ratio": `{"default":1}`,
+	}))
+
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/mj/submit/imagine", nil)
+	info := &relaycommon.RelayInfo{
+		OriginModelName: "mj_imagine",
+		UserGroup:       "default",
+		UsingGroup:      "default",
+	}
+
+	t.Run("fixed expression wins over leftover default model price", func(t *testing.T) {
+		if leftover, ok := ratio_setting.GetModelPrice("mj_imagine", false); ok {
+			require.NotEqual(t, 0.15, leftover)
+		}
+		price, err := ModelPriceHelperPerCall(ctx, info)
+		require.NoError(t, err)
+		assert.True(t, price.UsePrice)
+		assert.Equal(t, 0.15, price.ModelPrice)
+		assert.Equal(t, 75000, price.Quota)
+	})
+
+	t.Run("fast and hd multiply the expression base", func(t *testing.T) {
+		price, err := ModelPriceHelperPerCall(ctx, info)
+		require.NoError(t, err)
+		info.TaskRelayInfo = &relaycommon.TaskRelayInfo{
+			MjMode: "fast", MjModeRatio: 1.5, MjHd: true, MjHdRatio: 2,
+		}
+		service.ChargeMjMode(info, &price)
+		assert.Equal(t, 0.15, price.ModelPrice)
+		assert.Equal(t, 225000, price.Quota)
+		assert.Equal(t, 1.5, price.OtherRatios()["mj_mode"])
+		assert.Equal(t, 2.0, price.OtherRatios()["mj_hd"])
+	})
+
+	t.Run("token-priced expression falls back to default per-call price", func(t *testing.T) {
+		require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+			"billing_setting.billing_mode":    `{"mj_imagine":"tiered_expr"}`,
+			"billing_setting.billing_expr":    `{"mj_imagine":"tier(\"base\", p * 2)"}`,
+			"group_ratio_setting.group_ratio": `{"default":1}`,
+		}))
+		price, err := ModelPriceHelperPerCall(ctx, info)
+		require.NoError(t, err)
+		assert.True(t, price.UsePrice)
+		assert.Equal(t, 0.1, price.ModelPrice)
+		assert.Equal(t, 50000, price.Quota)
+	})
+}
+
 // priceTestReservation observes the reservation requested before image submission.
 type priceTestReservation struct{ held int }
 

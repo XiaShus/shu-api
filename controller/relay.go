@@ -373,13 +373,14 @@ func writeMidjourneyRelayError(c *gin.Context, mjErr *taskdto.MidjourneyResponse
 	if mjErr.Code == 403 {
 		statusCode = http.StatusForbidden
 	}
+	description := strings.TrimSpace(fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result))
 	c.JSON(statusCode, gin.H{
-		"description": fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result),
+		"description": description,
 		"type":        "upstream_error",
 		"code":        mjErr.Code,
 	})
 	channelId := c.GetInt("channel_id")
-	logger.LogError(c, fmt.Sprintf("relay error (channel #%d, status code %d): %s", channelId, statusCode, fmt.Sprintf("%s %s", mjErr.Description, mjErr.Result)))
+	logger.LogError(c, fmt.Sprintf("relay error (channel #%d, status code %d): %s", channelId, statusCode, description))
 }
 
 func RelayNotImplemented(c *gin.Context) {

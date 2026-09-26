@@ -114,6 +114,7 @@ const CONTENT_SECTIONS = [
           MjActionCheckSuccessEnabled: settings.MjActionCheckSuccessEnabled,
           MjModePathPrefixEnabled: settings.MjModePathPrefixEnabled,
           MjModeRatio: settings.MjModeRatio,
+          MjHdRatio: settings.MjHdRatio,
           MjGroupModePolicy: settings.MjGroupModePolicy,
         }}
       />

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -138,8 +139,7 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 			cancel()
 			continue
 		}
-		var responseItems []dto.MidjourneyDto
-		err = common.Unmarshal(responseBody, &responseItems)
+		responseItems, responseRaws, err := service.ParseMidjourneyTaskList(responseBody)
 		if err != nil {
 			logger.LogError(ctx, fmt.Sprintf("Get Mjp Task parse body error2: %v, body: %s", err, string(responseBody)))
 			resp.Body.Close()
@@ -150,11 +150,15 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 		req.Body.Close()
 		cancel()
 
-		for _, responseItem := range responseItems {
+		for i, responseItem := range responseItems {
 			task := taskM[responseItem.MjId]
 			if task == nil {
 				logger.LogWarn(ctx, fmt.Sprintf("Midjourney task response ignored: unknown mj_id=%s", responseItem.MjId))
 				continue
+			}
+			var upstreamRaw []byte
+			if i < len(responseRaws) {
+				upstreamRaw = responseRaws[i]
 			}
 
 			useTime := (time.Now().UnixNano() / int64(time.Millisecond)) - task.SubmitTime
@@ -163,7 +167,7 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 				responseItem.FailReason = "上游任务超时（超过1小时）"
 				responseItem.Status = "FAILURE"
 			}
-			if !checkMjTaskNeedUpdate(task, responseItem) {
+			if !checkMjTaskNeedUpdate(task, responseItem, upstreamRaw) {
 				continue
 			}
 			preStatus := task.Status
@@ -201,6 +205,7 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 				task.VideoUrls = "" // 空值时清空字段
 			}
 
+			service.RememberMidjourneyUpstream(task, upstreamRaw)
 			logMidjourneyModeMismatch(ctx, task, responseItem)
 			if responseItem.Status == "SUCCESS" {
 				service.PersistMidjourneyMedia(task)
@@ -229,7 +234,7 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 	return summary
 }
 
-func checkMjTaskNeedUpdate(oldTask *model.Midjourney, newTask dto.MidjourneyDto) bool {
+func checkMjTaskNeedUpdate(oldTask *model.Midjourney, newTask dto.MidjourneyDto, upstreamRaw []byte) bool {
 	if oldTask.Code != 1 {
 		return true
 	}
@@ -288,6 +293,9 @@ func checkMjTaskNeedUpdate(oldTask *model.Midjourney, newTask dto.MidjourneyDto)
 		// 如果新数据没有 VideoUrls 但旧数据有，需要更新（清空）
 		return true
 	}
+	if strings.TrimSpace(string(upstreamRaw)) != "" && service.MidjourneyPayloadChanged(oldTask, upstreamRaw) {
+		return true
+	}
 
 	return false
 }
@@ -304,6 +312,7 @@ func GetAllMidjourney(c *gin.Context) {
 	}
 
 	items := model.GetAllTasks(pageInfo.GetStartIdx(), pageInfo.GetPageSize(), queryParams)
+	service.FillMidjourneyUpstreamPayloads(items)
 	total := model.CountAllTasks(queryParams)
 
 	if setting.MjForwardUrlEnabled {
@@ -331,6 +340,7 @@ func GetUserMidjourney(c *gin.Context) {
 	}
 
 	items := model.GetAllUserTask(userId, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), queryParams)
+	service.FillMidjourneyUpstreamPayloads(items)
 	total := model.CountAllUserTask(userId, queryParams)
 
 	if setting.MjForwardUrlEnabled {

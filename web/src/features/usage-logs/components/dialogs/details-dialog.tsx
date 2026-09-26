@@ -237,6 +237,32 @@ function BillingBreakdown(props: {
     })
   }
 
+  if (other.mj_mode) {
+    rows.push({
+      label: t('Midjourney Mode'),
+      value: other.mj_mode,
+    })
+  }
+  if (
+    other.mj_mode_ratio != null &&
+    Number.isFinite(other.mj_mode_ratio) &&
+    other.mj_mode_ratio !== 1
+  ) {
+    rows.push({
+      label: t('Speed Mode Ratio'),
+      value: `${formatRatio(other.mj_mode_ratio)}x`,
+    })
+  }
+  if (other.mj_hd) {
+    rows.push({
+      label: t('HD (--hd) ratio'),
+      value:
+        other.mj_hd_ratio != null && Number.isFinite(other.mj_hd_ratio)
+          ? `${formatRatio(other.mj_hd_ratio)}x`
+          : t('Enabled'),
+    })
+  }
+
   if (!isTieredExpr && isClaude && hasAnyCacheTokens(other)) {
     if (other.cache_ratio != null && other.cache_ratio !== 1) {
       rows.push({

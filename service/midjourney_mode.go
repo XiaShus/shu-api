@@ -176,19 +176,44 @@ func ChargeMjMode(info *relaycommon.RelayInfo, priceData *hosttypes.PriceData) {
 		return
 	}
 	mode := info.TaskRelayInfo.MjMode
-	if strings.HasPrefix(info.OriginModelName, "mj_"+mode+"_") {
+	if !strings.HasPrefix(info.OriginModelName, "mj_"+mode+"_") {
+		ratio := info.TaskRelayInfo.MjModeRatio
+		if ratio <= 0 {
+			ratio = 1
+		}
+		priceData.AddOtherRatio("mj_mode", ratio)
+		quota, clamp := common.QuotaFromFloatChecked(float64(priceData.Quota) * ratio)
+		priceData.Quota = quota
+		if clamp != nil {
+			info.QuotaClamp = clamp
+		}
+	}
+	if !info.TaskRelayInfo.MjHd {
 		return
 	}
-	ratio := info.TaskRelayInfo.MjModeRatio
-	if ratio <= 0 {
-		ratio = 1
+	hdRatio := info.TaskRelayInfo.MjHdRatio
+	if hdRatio <= 0 {
+		hdRatio = setting.GetMjHdRatio()
 	}
-	priceData.AddOtherRatio("mj_mode", ratio)
-	quota, clamp := common.QuotaFromFloatChecked(float64(priceData.Quota) * ratio)
+	if hdRatio <= 0 {
+		return
+	}
+	priceData.AddOtherRatio("mj_hd", hdRatio)
+	if hdRatio == 1 {
+		return
+	}
+	quota, clamp := common.QuotaFromFloatChecked(float64(priceData.Quota) * hdRatio)
 	priceData.Quota = quota
 	if clamp != nil {
 		info.QuotaClamp = clamp
 	}
+}
+
+func requestHasMjHd(req *dto.MidjourneyRequest) bool {
+	if req == nil {
+		return false
+	}
+	return promptContainsFlag(req.Prompt, "--hd") || promptContainsFlag(req.Content, "--hd")
 }
 
 func BindResolvedMjMode(info *relaycommon.RelayInfo, c *gin.Context, req *dto.MidjourneyRequest) (string, error) {
@@ -205,6 +230,10 @@ func BindResolvedMjMode(info *relaycommon.RelayInfo, c *gin.Context, req *dto.Mi
 	info.TaskRelayInfo.MjMode = mode
 	info.TaskRelayInfo.MjModeSource = source
 	info.TaskRelayInfo.MjModeRatio = setting.GetMjModeRatio(mode)
+	info.TaskRelayInfo.MjHd = requestHasMjHd(req)
+	if info.TaskRelayInfo.MjHd {
+		info.TaskRelayInfo.MjHdRatio = setting.GetMjHdRatio()
+	}
 	return mode, nil
 }
 

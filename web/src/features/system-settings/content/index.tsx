@@ -45,6 +45,7 @@ const defaultContentSettings: ContentSettings = {
   MjActionCheckSuccessEnabled: false,
   MjModePathPrefixEnabled: true,
   MjModeRatio: '{"fast":1,"relax":1,"turbo":2,"draft":0.5}',
+  MjHdRatio: 2,
   MjGroupModePolicy: '{}',
 }
 
