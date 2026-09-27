@@ -20,6 +20,11 @@ import (
 )
 
 func TestDescribeMidjourneyNonJSONBody(t *testing.T) {
+	t.Run("plain upstream rejection is surfaced", func(t *testing.T) {
+		body := []byte("Forbidden: User is not admin.")
+		assert.Equal(t, "upstream rejected (status 401): Forbidden: User is not admin.", describeMidjourneyNonJSONBody(http.StatusUnauthorized, body))
+	})
+
 	t.Run("json-looking garbage stays unmarshal error", func(t *testing.T) {
 		assert.Equal(t, "unmarshal_response_body_failed (status 200)", describeMidjourneyNonJSONBody(http.StatusOK, []byte(`not-json`)))
 	})

@@ -97,6 +97,17 @@ func Distribute() func(c *gin.Context) {
 				}
 			}
 		}
+		if strings.HasPrefix(c.Request.URL.Path, "/pg/mj/") {
+			requested := strings.TrimSpace(c.Query("group"))
+			if requested != "" {
+				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
+				if !service.GroupInUserUsableGroups(usingGroup, requested) && requested != usingGroup {
+					abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
+					return
+				}
+				common.SetContextKey(c, constant.ContextKeyUsingGroup, requested)
+			}
+		}
 		if pinned || shouldSelectChannel {
 			usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
 			var selectErr *service.ChannelSelectError
@@ -372,6 +383,8 @@ func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
 			shouldSelectChannel = false
 		} else if relayMode == relayconstant.RelayModeSwapVideoFace {
 			modelRequest.Model = "swap_video_face"
+		} else if relayMode == relayconstant.RelayModeMidjourneyProfile {
+			modelRequest.Model = "mj_imagine"
 		} else {
 			midjourneyRequest := taskdto.MidjourneyRequest{}
 			err = common.UnmarshalBodyReusable(c, &midjourneyRequest)

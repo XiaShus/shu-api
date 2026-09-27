@@ -67,6 +67,8 @@ func SetRelayRouter(router *gin.Engine) {
 	playgroundRouter.Use(middleware.UserAuth(), middleware.Distribute())
 	{
 		playgroundRouter.POST("/chat/completions", controller.Playground)
+		playgroundRouter.POST("/mj/*path", controller.PlaygroundMidjourney)
+		playgroundRouter.GET("/mj/*path", controller.PlaygroundMidjourney)
 	}
 	relayV1Router := router.Group("/v1")
 	relayV1Router.Use(middleware.RouteTag("relay"))
@@ -233,5 +235,10 @@ func registerMjRouterGroup(relayMjRouter *gin.RouterGroup) {
 		relayMjRouter.POST("/insight-face/swap", controller.RelayMidjourney)
 		relayMjRouter.POST("/insight-face/video-swap", controller.RelayMidjourney)
 		relayMjRouter.POST("/submit/upload-discord-images", controller.RelayMidjourney)
+		relayMjRouter.POST("/profile/create", controller.RelayMidjourney)
+		relayMjRouter.GET("/profile/pair/:id", controller.RelayMidjourney)
+		relayMjRouter.POST("/profile/pair/skip", controller.RelayMidjourney)
+		relayMjRouter.POST("/profile/pair/rate", controller.RelayMidjourney)
+		relayMjRouter.GET("/profile/:id/fetch", controller.RelayMidjourney)
 	}
 }

@@ -614,7 +614,31 @@ func RelayMidjourneyTask(c *gin.Context, relayMode int) *dto.MidjourneyResponse 
 	return nil
 }
 
+func forwardMidjourneyProfile(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dto.MidjourneyResponse {
+	relayInfo.InitChannelMeta(c)
+	requestURL := getMjRequestPath(c.Request.URL.String(), mjModeOf(relayInfo))
+	fullRequestURL := fmt.Sprintf("%s%s", c.GetString("base_url"), requestURL)
+	midjResponseWithStatus, responseBody, err := service.DoMidjourneyHttpRequest(c, time.Second*60, fullRequestURL)
+	if err != nil {
+		if midjResponseWithStatus != nil {
+			return &midjResponseWithStatus.Response
+		}
+		return service.MidjourneyErrorWrapper(constant.MjErrorUnknown, "do_request_failed")
+	}
+	if len(responseBody) == 0 {
+		return nil
+	}
+	c.Writer.WriteHeader(midjResponseWithStatus.StatusCode)
+	if _, err = c.Writer.Write(responseBody); err != nil {
+		return &dto.MidjourneyResponse{Code: 4, Description: "copy_response_body_failed"}
+	}
+	return nil
+}
+
 func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dto.MidjourneyResponse {
+	if relayInfo.RelayMode == relayconstant.RelayModeMidjourneyProfile {
+		return forwardMidjourneyProfile(c, relayInfo)
+	}
 	consumeQuota := true
 	var midjRequest dto.MidjourneyRequest
 	err := common.UnmarshalBodyReusable(c, &midjRequest)
@@ -694,6 +718,7 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 			}
 			mjId = params.TaskId
 			midjRequest.Action = params.Action
+			midjRequest.Index = params.Index
 		} else if relayInfo.RelayMode == relayconstant.RelayModeMidjourneyModal {
 			//if midjRequest.MaskBase64 == "" {
 			//	return service.MidjourneyErrorWrapper(constant.MjRequestError, "mask_base64_is_required")

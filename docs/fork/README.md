@@ -19,6 +19,7 @@
 | [03-midjourney.md](./03-midjourney.md) | Phase B：MJ 快慢速分账 + 对齐 trueai v11.x |
 | [04-user-billing-profile.md](./04-user-billing-profile.md) | Phase C：用户级计费覆盖（额外分组 / 模型折扣 / 用户倍率） |
 | [05-upstream-merge.md](./05-upstream-merge.md) | 双分支模型、日常同步命令、冲突高发文件 |
+| [06-canvas-app.md](./06-canvas-app.md) | 画布应用：同仓模块、v1 范围、非范围、职责边界 |
 
 ## 分支策略
 

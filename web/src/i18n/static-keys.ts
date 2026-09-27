@@ -181,6 +181,10 @@ export const STATIC_I18N_KEYS = [
   // Header navigation
   'Home',
   'Console',
+  'App Center',
+  'Chat, image, video, and canvas tools.',
+  'Coming soon',
+  'Canvas',
   'Model Square',
   'Rankings',
   'Docs',

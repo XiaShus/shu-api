@@ -322,6 +322,10 @@ func describeMidjourneyNonJSONBody(statusCode int, body []byte) string {
 	lower := bytes.ToLower(trimmed)
 	isHTML := bytes.HasPrefix(lower, []byte("<!doctype html")) || bytes.Contains(lower, []byte("<html"))
 	if !isHTML {
+		text := strings.TrimSpace(string(trimmed))
+		if text != "" && len(text) <= 200 && !strings.ContainsAny(text, "<>") && strings.Contains(text, " ") {
+			return fmt.Sprintf("upstream rejected (status %d): %s", statusCode, text)
+		}
 		return fmt.Sprintf("unmarshal_response_body_failed (status %d)", statusCode)
 	}
 	text := string(body)
@@ -416,24 +420,21 @@ func DoMidjourneyHttpRequest(c *gin.Context, timeout time.Duration, fullRequestU
 		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "do_request_failed", http.StatusInternalServerError), nullBytes, err
 	}
 	statusCode := resp.StatusCode
-	//if statusCode != 200  {
-	//	return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "bad_response_status_code", statusCode), nullBytes, nil
-	//}
+	responseBody, err := io.ReadAll(resp.Body)
+	CloseResponseBodyGracefully(resp)
+	if err != nil && len(responseBody) == 0 {
+		common.SysLog("midjourney read response body failed: " + err.Error())
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_response_body_failed", statusCode), nullBytes, err
+	}
 	err = req.Body.Close()
 	if err != nil {
-		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "close_request_body_failed", statusCode), nullBytes, err
+		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "close_request_body_failed", statusCode), responseBody, err
 	}
-	err = c.Request.Body.Close()
-	if err != nil {
-		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "close_request_body_failed", statusCode), nullBytes, err
+	if c.Request.Body != nil {
+		_ = c.Request.Body.Close()
 	}
 	var midjResponse dto.MidjourneyResponse
 	var midjourneyUploadsResponse dto.MidjourneyUploadResponse
-	responseBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "read_response_body_failed", statusCode), nullBytes, err
-	}
-	CloseResponseBodyGracefully(resp)
 	logger.LogDebug(c, "midjourney response body: %s", responseBody)
 	if len(responseBody) == 0 {
 		return MidjourneyErrorWithStatusCodeWrapper(constant.MjErrorUnknown, "empty_response_body", statusCode), responseBody, nil

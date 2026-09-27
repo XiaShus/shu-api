@@ -37,6 +37,7 @@ export type TopNavLink = {
  * {
  *   home: true,
  *   console: true,
+ *   appCenter: true,
  *   pricing: { enabled: true, requireAuth: false },
  *   rankings: { enabled: true, requireAuth: false },
  *   docs: true,
@@ -70,6 +71,14 @@ export function useTopNavLinks(): TopNavLink[] {
   // Console -> /dashboard (new console path)
   if (modules?.console !== false) {
     links.push({ title: t('Console'), href: '/dashboard' })
+  }
+
+  if (modules?.appCenter !== false) {
+    links.push({
+      title: t('App Center'),
+      href: '/apps',
+      requiresAuth: true,
+    })
   }
 
   // Pricing

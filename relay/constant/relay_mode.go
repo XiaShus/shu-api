@@ -52,6 +52,7 @@ const (
 	RelayModeMidjourneyRetexture
 	RelayModeMidjourneyTaskCancel
 	RelayModeSwapVideoFace
+	RelayModeMidjourneyProfile
 )
 
 func Path2RelayMode(path string) int {
@@ -132,7 +133,9 @@ func Path2RelayModeMidjourney(path string) int {
 	} else if strings.HasSuffix(path, "/mj/submit/change") {
 		relayMode = RelayModeMidjourneyChange
 	} else if strings.HasSuffix(path, "/mj/submit/simple-change") {
-		relayMode = RelayModeMidjourneyChange
+		relayMode = RelayModeMidjourneySimpleChange
+	} else if strings.Contains(path, "/mj/profile/") {
+		relayMode = RelayModeMidjourneyProfile
 	} else if strings.HasSuffix(path, "/cancel") {
 		relayMode = RelayModeMidjourneyTaskCancel
 	} else if strings.HasSuffix(path, "/fetch") {

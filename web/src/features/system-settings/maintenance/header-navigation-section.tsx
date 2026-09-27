@@ -51,6 +51,7 @@ import {
 const headerNavSchema = z.object({
   home: z.boolean(),
   console: z.boolean(),
+  appCenter: z.boolean(),
   pricingEnabled: z.boolean(),
   pricingRequireAuth: z.boolean(),
   rankingsEnabled: z.boolean(),
@@ -73,6 +74,10 @@ const toFormValues = (config: HeaderNavModulesConfig): HeaderNavFormValues => ({
     config.console === undefined
       ? HEADER_NAV_DEFAULT.console
       : Boolean(config.console),
+  appCenter:
+    config.appCenter === undefined
+      ? HEADER_NAV_DEFAULT.appCenter
+      : Boolean(config.appCenter),
   pricingEnabled:
     config.pricing?.enabled === undefined
       ? HEADER_NAV_DEFAULT.pricing.enabled
@@ -119,6 +124,7 @@ export function HeaderNavigationSection({
       ...config,
       home: values.home,
       console: values.console,
+      appCenter: values.appCenter,
       docs: values.docs,
       about: values.about,
       pricing: {
@@ -162,6 +168,11 @@ export function HeaderNavigationSection({
       key: 'console',
       title: t('Console'),
       description: t('User dashboard and quota controls.'),
+    },
+    {
+      key: 'appCenter',
+      title: t('App Center'),
+      description: t('Chat, image, video, and canvas tools.'),
     },
     {
       key: 'docs',
