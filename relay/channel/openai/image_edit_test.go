@@ -96,3 +96,114 @@ func TestConvertImageEditRequestMultipart(t *testing.T) {
 		convertAndReplay(t, c, prompt)
 	})
 }
+
+func TestConvertImageEditJSONKeepsImageURL(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := []byte(`{
+		"model": "gpt-image-2",
+		"prompt": "保持人物主体和背景基本不变，把图片中的美女改成帅哥",
+		"size": "1024x1024",
+		"images": [{"image_url": "https://oss.example/source.png", "detail": "high"}],
+		"response_format": "url",
+		"n": 2
+	}`)
+	var request dto.ImageRequest
+	require.NoError(t, common.Unmarshal(body, &request))
+	copied, err := common.DeepCopy(&request)
+	require.NoError(t, err)
+
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeImagesEdits}
+
+	converted, err := (&Adaptor{}).ConvertImageRequest(c, info, *copied)
+	require.NoError(t, err)
+	outbound, err := common.Marshal(converted)
+	require.NoError(t, err)
+
+	var sent map[string]any
+	require.NoError(t, common.Unmarshal(outbound, &sent))
+	images, ok := sent["images"].([]any)
+	require.True(t, ok)
+	require.Len(t, images, 1)
+	item, ok := images[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "https://oss.example/source.png", item["image_url"])
+	require.Equal(t, "high", item["detail"])
+	require.Equal(t, "url", sent["response_format"])
+	require.EqualValues(t, 2, sent["n"])
+}
+
+func TestConvertImageEditJSONAddsImageURLWithoutDroppingImage(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := []byte(`{"model":"gpt-image-2","prompt":"edit","image":"https://oss.example/a.png","n":1}`)
+	var request dto.ImageRequest
+	require.NoError(t, common.Unmarshal(body, &request))
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeImagesEdits}
+
+	converted, err := (&Adaptor{}).ConvertImageRequest(c, info, request)
+	require.NoError(t, err)
+	outbound, err := common.Marshal(converted)
+	require.NoError(t, err)
+
+	var sent struct {
+		Image  string `json:"image"`
+		Images []struct {
+			ImageURL string `json:"image_url"`
+		} `json:"images"`
+	}
+	require.NoError(t, common.Unmarshal(outbound, &sent))
+	require.Equal(t, "https://oss.example/a.png", sent.Image)
+	require.Len(t, sent.Images, 1)
+	require.Equal(t, "https://oss.example/a.png", sent.Images[0].ImageURL)
+}
+
+func TestConvertImageEditJSONAddsImageURLOnExistingImages(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	body := []byte(`{"model":"gpt-image-2","prompt":"edit","images":[{"url":"https://oss.example/a.png"}],"n":1}`)
+	var request dto.ImageRequest
+	require.NoError(t, common.Unmarshal(body, &request))
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", bytes.NewReader(body))
+	c.Request.Header.Set("Content-Type", "application/json")
+	info := &relaycommon.RelayInfo{RelayMode: relayconstant.RelayModeImagesEdits}
+
+	converted, err := (&Adaptor{}).ConvertImageRequest(c, info, request)
+	require.NoError(t, err)
+	outbound, err := common.Marshal(converted)
+	require.NoError(t, err)
+
+	var sent struct {
+		Images []struct {
+			URL      string `json:"url"`
+			ImageURL string `json:"image_url"`
+		} `json:"images"`
+	}
+	require.NoError(t, common.Unmarshal(outbound, &sent))
+	require.Len(t, sent.Images, 1)
+	require.Equal(t, "https://oss.example/a.png", sent.Images[0].URL)
+	require.Equal(t, "https://oss.example/a.png", sent.Images[0].ImageURL)
+
+	stringBody := []byte(`{"model":"gpt-image-2","prompt":"edit","images":["https://oss.example/a.png"],"n":1}`)
+	var stringRequest dto.ImageRequest
+	require.NoError(t, common.Unmarshal(stringBody, &stringRequest))
+	stringConverted, err := (&Adaptor{}).ConvertImageRequest(c, info, stringRequest)
+	require.NoError(t, err)
+	stringOutbound, err := common.Marshal(stringConverted)
+	require.NoError(t, err)
+	var stringSent struct {
+		Images []struct {
+			ImageURL string `json:"image_url"`
+		} `json:"images"`
+	}
+	require.NoError(t, common.Unmarshal(stringOutbound, &stringSent))
+	require.Len(t, stringSent.Images, 1)
+	require.Equal(t, "https://oss.example/a.png", stringSent.Images[0].ImageURL)
+}
