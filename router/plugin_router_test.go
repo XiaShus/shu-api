@@ -904,6 +904,81 @@ func TestWebFallbackDoesNotCacheMissingAPIOrAssets(t *testing.T) {
 	assert.Equal(t, "no-cache", page.Header().Get("Cache-Control"))
 }
 
+func TestWebCacheDoesNotStoreErrorResponses(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	engine := gin.New()
+	engine.GET("/boom", middleware.Cache(), func(c *gin.Context) {
+		c.String(http.StatusInternalServerError, "boom")
+	})
+	engine.GET("/ok", middleware.Cache(), func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+
+	failed := performPluginRequest(engine, http.MethodGet, "/boom")
+	assert.Equal(t, http.StatusInternalServerError, failed.Code)
+	assert.Equal(t, "no-store", failed.Header().Get("Cache-Control"))
+	assert.NotContains(t, failed.Header().Get("Cache-Control"), "604800")
+
+	succeeded := performPluginRequest(engine, http.MethodGet, "/ok")
+	assert.Equal(t, http.StatusOK, succeeded.Code)
+	assert.Equal(t, "max-age=604800", succeeded.Header().Get("Cache-Control"))
+}
+
+func TestEmbeddedStaticAssetsBypassWebRateLimit(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	previousEnable := common.GlobalWebRateLimitEnable
+	previousNum := common.GlobalWebRateLimitNum
+	previousDuration := common.GlobalWebRateLimitDuration
+	previousRedis := common.RedisEnabled
+	t.Cleanup(func() {
+		common.GlobalWebRateLimitEnable = previousEnable
+		common.GlobalWebRateLimitNum = previousNum
+		common.GlobalWebRateLimitDuration = previousDuration
+		common.RedisEnabled = previousRedis
+	})
+	common.RedisEnabled = false
+	common.GlobalWebRateLimitEnable = true
+	common.GlobalWebRateLimitNum = 1
+	common.GlobalWebRateLimitDuration = 60
+
+	engine := gin.New()
+	require.NoError(t, engine.SetTrustedProxies(nil))
+	SetWebRouter(engine, WebAssets{IndexPage: []byte("dashboard")}, func(c *gin.Context) { c.Next() })
+
+	remoteAddr := "203.0.113.55:40000"
+	staticRequest := func() *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/static/js/async/15676.e709b55f8a.js", nil)
+		request.RemoteAddr = remoteAddr
+		engine.ServeHTTP(recorder, request)
+		return recorder
+	}
+	pageRequest := func() *httptest.ResponseRecorder {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(http.MethodGet, "/dashboard/models", nil)
+		request.RemoteAddr = remoteAddr
+		engine.ServeHTTP(recorder, request)
+		return recorder
+	}
+
+	firstStatic := staticRequest()
+	assert.Equal(t, http.StatusOK, firstStatic.Code)
+	assert.Equal(t, "dashboard", firstStatic.Body.String())
+	assert.Equal(t, http.StatusOK, staticRequest().Code)
+
+	assert.Equal(t, http.StatusOK, pageRequest().Code)
+	limited := pageRequest()
+	assert.Equal(t, http.StatusTooManyRequests, limited.Code)
+	assert.Contains(t, limited.Header().Get("Cache-Control"), "no-store")
+
+	assert.Equal(t, http.StatusOK, staticRequest().Code)
+	traversal := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/static/../dashboard/models", nil)
+	request.RemoteAddr = remoteAddr
+	engine.ServeHTTP(traversal, request)
+	assert.Equal(t, http.StatusTooManyRequests, traversal.Code)
+}
+
 func TestSecurityRoutesDisableCachingBeforeAuthentication(t *testing.T) {
 	outer := gin.New()
 	SetApiRouter(outer)

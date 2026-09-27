@@ -17,10 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useNavigate, useRouter } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+
+import { chunkLoadRequestURL, claimChunkReload } from './chunk-load'
 
 const FEEDBACK_URL = 'https://github.com/QuantumNous/new-api/issues'
 
@@ -47,6 +50,18 @@ export function GeneralError({
   const { history } = useRouter()
   const status = getHttpStatus(error)
   const isRateLimited = status === 429
+
+  // A failed lazy chunk otherwise sticks on this page. Reload the script
+  // bypassing the HTTP cache once; a repeated failure stays here.
+  useEffect(() => {
+    const url = chunkLoadRequestURL(error)
+    if (!url || !claimChunkReload(url)) return
+    void fetch(url, { cache: 'reload', credentials: 'same-origin' }).finally(
+      () => {
+        window.location.reload()
+      }
+    )
+  }, [error])
   const title = isRateLimited
     ? t('Too many requests')
     : `${t('Oops! Something went wrong')} ${`:')`}`
