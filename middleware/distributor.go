@@ -79,7 +79,7 @@ func Distribute() func(c *gin.Context) {
 					return
 				}
 				// check path is /pg/chat/completions
-				if strings.HasPrefix(c.Request.URL.Path, "/pg/chat/completions") {
+				if appCenterJSONGroupPath(c) {
 					usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
 					playgroundRequest := &dto.PlayGroundRequest{}
 					err = common.UnmarshalBodyReusable(c, playgroundRequest)
@@ -97,16 +97,8 @@ func Distribute() func(c *gin.Context) {
 				}
 			}
 		}
-		if strings.HasPrefix(c.Request.URL.Path, "/pg/mj/") {
-			requested := strings.TrimSpace(c.Query("group"))
-			if requested != "" {
-				usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
-				if !service.GroupInUserUsableGroups(usingGroup, requested) && requested != usingGroup {
-					abortWithOpenAiMessage(c, http.StatusForbidden, i18n.T(c, i18n.MsgDistributorGroupAccessDenied))
-					return
-				}
-				common.SetContextKey(c, constant.ContextKeyUsingGroup, requested)
-			}
+		if applyAppCenterMjGroup(c) {
+			return
 		}
 		if pinned || shouldSelectChannel {
 			usingGroup := common.GetContextKeyString(c, constant.ContextKeyUsingGroup)
@@ -368,6 +360,9 @@ func getJSONStringValue(result gjson.Result, field string) (string, error) {
 }
 
 func getModelRequest(c *gin.Context) (*ModelRequest, bool, error) {
+	if handled, shouldSelect, request, appErr := recognizeAppCenterRequest(c); handled {
+		return request, shouldSelect, appErr
+	}
 	var modelRequest ModelRequest
 	shouldSelectChannel := true
 	var err error

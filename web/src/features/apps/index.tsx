@@ -46,7 +46,19 @@ export function AppCenter() {
               </Card>
             )
 
-            if (app.enabled) {
+            if (app.enabled && app.href) {
+              if (app.mode) {
+                return (
+                  <Link
+                    key={app.id}
+                    to='/playground'
+                    search={{ mode: app.mode, model: '' }}
+                    className='block'
+                  >
+                    {card}
+                  </Link>
+                )
+              }
               return (
                 <Link key={app.id} to={app.href} className='block'>
                   {card}

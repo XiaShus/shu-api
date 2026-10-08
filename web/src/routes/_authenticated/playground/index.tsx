@@ -19,10 +19,27 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { Main } from '@/components/layout'
-import { Playground } from '@/features/playground'
+import { AppExperience } from '@/features/apps/experience'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
 
+const EXPERIENCE_MODES = ['chat', 'image', 'video', 'audio'] as const
+
+type PlaygroundSearchMode = (typeof EXPERIENCE_MODES)[number]
+
+function isPlaygroundMode(value: unknown): value is PlaygroundSearchMode {
+  return (
+    typeof value === 'string' &&
+    (EXPERIENCE_MODES as readonly string[]).includes(value)
+  )
+}
+
 export const Route = createFileRoute('/_authenticated/playground/')({
+  validateSearch: (
+    search: Record<string, unknown>
+  ): { mode: PlaygroundSearchMode; model: string } => ({
+    mode: isPlaygroundMode(search.mode) ? search.mode : 'chat',
+    model: typeof search.model === 'string' ? search.model : '',
+  }),
   beforeLoad: () => {
     if (!isSidebarModuleEnabled('chat', 'playground')) {
       throw redirect({ to: '/dashboard' })
@@ -34,7 +51,7 @@ export const Route = createFileRoute('/_authenticated/playground/')({
 function PlaygroundPage() {
   return (
     <Main className='p-0'>
-      <Playground />
+      <AppExperience />
     </Main>
   )
 }

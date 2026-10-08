@@ -58,6 +58,7 @@ import { Route as AuthenticatedUsageLogsAuditRouteImport } from './routes/_authe
 import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authenticated/users/index'
 import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenticated/wallet/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
+import { Route as AuthenticatedAppsCanvasIndexRouteImport } from './routes/_authenticated/apps/canvas/index'
 import { Route as AuthenticatedAppsMidjourneyIndexRouteImport } from './routes/_authenticated/apps/midjourney/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -341,6 +342,12 @@ const PricingModelIdIndexRoute = PricingModelIdIndexRouteImport.update({
   path: '/pricing/$modelId/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAppsCanvasIndexRoute =
+  AuthenticatedAppsCanvasIndexRouteImport.update({
+    id: '/apps/canvas/',
+    path: '/apps/canvas/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppsMidjourneyIndexRoute =
   AuthenticatedAppsMidjourneyIndexRouteImport.update({
     id: '/apps/midjourney/',
@@ -512,6 +519,7 @@ export interface FileRoutesByFullPath {
   '/system-settings/request-policies/$section': typeof AuthenticatedSystemSettingsRequestPoliciesSectionRoute
   '/system-settings/security/$section': typeof AuthenticatedSystemSettingsSecuritySectionRoute
   '/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
+  '/apps/canvas/': typeof AuthenticatedAppsCanvasIndexRoute
   '/apps/midjourney/': typeof AuthenticatedAppsMidjourneyIndexRoute
   '/system-settings/auth/': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/system-settings/billing/': typeof AuthenticatedSystemSettingsBillingIndexRoute
@@ -579,6 +587,7 @@ export interface FileRoutesByTo {
   '/system-settings/request-policies/$section': typeof AuthenticatedSystemSettingsRequestPoliciesSectionRoute
   '/system-settings/security/$section': typeof AuthenticatedSystemSettingsSecuritySectionRoute
   '/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
+  '/apps/canvas': typeof AuthenticatedAppsCanvasIndexRoute
   '/apps/midjourney': typeof AuthenticatedAppsMidjourneyIndexRoute
   '/system-settings/auth': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/system-settings/billing': typeof AuthenticatedSystemSettingsBillingIndexRoute
@@ -650,6 +659,7 @@ export interface FileRoutesById {
   '/_authenticated/system-settings/request-policies/$section': typeof AuthenticatedSystemSettingsRequestPoliciesSectionRoute
   '/_authenticated/system-settings/security/$section': typeof AuthenticatedSystemSettingsSecuritySectionRoute
   '/_authenticated/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
+  '/_authenticated/apps/canvas/': typeof AuthenticatedAppsCanvasIndexRoute
   '/_authenticated/apps/midjourney/': typeof AuthenticatedAppsMidjourneyIndexRoute
   '/_authenticated/system-settings/auth/': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/_authenticated/system-settings/billing/': typeof AuthenticatedSystemSettingsBillingIndexRoute
@@ -720,6 +730,7 @@ export interface FileRouteTypes {
     | '/system-settings/request-policies/$section'
     | '/system-settings/security/$section'
     | '/system-settings/site/$section'
+    | '/apps/canvas/'
     | '/apps/midjourney/'
     | '/system-settings/auth/'
     | '/system-settings/billing/'
@@ -787,6 +798,7 @@ export interface FileRouteTypes {
     | '/system-settings/request-policies/$section'
     | '/system-settings/security/$section'
     | '/system-settings/site/$section'
+    | '/apps/canvas'
     | '/apps/midjourney'
     | '/system-settings/auth'
     | '/system-settings/billing'
@@ -857,6 +869,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system-settings/request-policies/$section'
     | '/_authenticated/system-settings/security/$section'
     | '/_authenticated/system-settings/site/$section'
+    | '/_authenticated/apps/canvas/'
     | '/_authenticated/apps/midjourney/'
     | '/_authenticated/system-settings/auth/'
     | '/_authenticated/system-settings/billing/'
@@ -1234,6 +1247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PricingModelIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/apps/canvas/': {
+      id: '/_authenticated/apps/canvas/'
+      path: '/apps/canvas'
+      fullPath: '/apps/canvas/'
+      preLoaderRoute: typeof AuthenticatedAppsCanvasIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/apps/midjourney/': {
       id: '/_authenticated/apps/midjourney/'
       path: '/apps/midjourney'
@@ -1484,6 +1504,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWalletIndexRoute: typeof AuthenticatedWalletIndexRoute
+  AuthenticatedAppsCanvasIndexRoute: typeof AuthenticatedAppsCanvasIndexRoute
   AuthenticatedAppsMidjourneyIndexRoute: typeof AuthenticatedAppsMidjourneyIndexRoute
   AuthenticatedAppsMidjourneyStylesBoardIdRoute: typeof AuthenticatedAppsMidjourneyStylesBoardIdRoute
   AuthenticatedAppsMidjourneyStylesIndexRoute: typeof AuthenticatedAppsMidjourneyStylesIndexRoute
@@ -1516,6 +1537,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWalletIndexRoute: AuthenticatedWalletIndexRoute,
+  AuthenticatedAppsCanvasIndexRoute: AuthenticatedAppsCanvasIndexRoute,
   AuthenticatedAppsMidjourneyIndexRoute: AuthenticatedAppsMidjourneyIndexRoute,
   AuthenticatedAppsMidjourneyStylesBoardIdRoute:
     AuthenticatedAppsMidjourneyStylesBoardIdRoute,
