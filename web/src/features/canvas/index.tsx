@@ -29,6 +29,10 @@ import { getCanvasDraft, saveCanvasDraft } from './api'
 import { CanvasBoard } from './canvas-board'
 import { emptyCanvasDraft, type CanvasDraft } from './types'
 
+export { CanvasEditor } from './editor'
+export { StudioHome } from './home'
+export { CanvasLibrary } from './library'
+
 export function CanvasPage() {
   const { t } = useTranslation()
   const { config, models, setGroups, setModels, updateConfig } = usePlaygroundState()

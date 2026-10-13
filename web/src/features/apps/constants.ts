@@ -53,4 +53,11 @@ export const APP_CENTER_APPS = [
     enabled: true,
     mode: null,
   },
+  {
+    id: 'ecom',
+    titleKey: 'Commerce images',
+    href: '/apps/ecom',
+    enabled: true,
+    mode: null,
+  },
 ] as const

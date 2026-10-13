@@ -59,7 +59,10 @@ import { Route as AuthenticatedUsersIndexRouteImport } from './routes/_authentic
 import { Route as AuthenticatedWalletIndexRouteImport } from './routes/_authenticated/wallet/index'
 import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$modelId/index'
 import { Route as AuthenticatedAppsCanvasIndexRouteImport } from './routes/_authenticated/apps/canvas/index'
+import { Route as AuthenticatedAppsCanvasCanvasIdRouteImport } from './routes/_authenticated/apps/canvas/$canvasId'
+import { Route as AuthenticatedAppsEcomIndexRouteImport } from './routes/_authenticated/apps/ecom/index'
 import { Route as AuthenticatedAppsMidjourneyIndexRouteImport } from './routes/_authenticated/apps/midjourney/index'
+import { Route as AuthenticatedSystemSettingsAgentIndexRouteImport } from './routes/_authenticated/system-settings/agent/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
 import { Route as AuthenticatedSystemSettingsBillingIndexRouteImport } from './routes/_authenticated/system-settings/billing/index'
@@ -348,11 +351,29 @@ const AuthenticatedAppsCanvasIndexRoute =
     path: '/apps/canvas/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAppsCanvasCanvasIdRoute =
+  AuthenticatedAppsCanvasCanvasIdRouteImport.update({
+    id: '/apps/canvas/$canvasId',
+    path: '/apps/canvas/$canvasId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppsEcomIndexRoute =
+  AuthenticatedAppsEcomIndexRouteImport.update({
+    id: '/apps/ecom/',
+    path: '/apps/ecom/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppsMidjourneyIndexRoute =
   AuthenticatedAppsMidjourneyIndexRouteImport.update({
     id: '/apps/midjourney/',
     path: '/apps/midjourney/',
     getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSystemSettingsAgentIndexRoute =
+  AuthenticatedSystemSettingsAgentIndexRouteImport.update({
+    id: '/agent/',
+    path: '/agent/',
+    getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
   } as any)
 const AuthenticatedSystemSettingsAuthIndexRoute =
   AuthenticatedSystemSettingsAuthIndexRouteImport.update({
@@ -511,6 +532,7 @@ export interface FileRoutesByFullPath {
   '/users/': typeof AuthenticatedUsersIndexRoute
   '/wallet/': typeof AuthenticatedWalletIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
+  '/apps/canvas/$canvasId': typeof AuthenticatedAppsCanvasCanvasIdRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
   '/system-settings/content/$section': typeof AuthenticatedSystemSettingsContentSectionRoute
@@ -520,7 +542,9 @@ export interface FileRoutesByFullPath {
   '/system-settings/security/$section': typeof AuthenticatedSystemSettingsSecuritySectionRoute
   '/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
   '/apps/canvas/': typeof AuthenticatedAppsCanvasIndexRoute
+  '/apps/ecom/': typeof AuthenticatedAppsEcomIndexRoute
   '/apps/midjourney/': typeof AuthenticatedAppsMidjourneyIndexRoute
+  '/system-settings/agent/': typeof AuthenticatedSystemSettingsAgentIndexRoute
   '/system-settings/auth/': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/system-settings/billing/': typeof AuthenticatedSystemSettingsBillingIndexRoute
   '/system-settings/content/': typeof AuthenticatedSystemSettingsContentIndexRoute
@@ -579,6 +603,7 @@ export interface FileRoutesByTo {
   '/users': typeof AuthenticatedUsersIndexRoute
   '/wallet': typeof AuthenticatedWalletIndexRoute
   '/pricing/$modelId': typeof PricingModelIdIndexRoute
+  '/apps/canvas/$canvasId': typeof AuthenticatedAppsCanvasCanvasIdRoute
   '/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
   '/system-settings/content/$section': typeof AuthenticatedSystemSettingsContentSectionRoute
@@ -588,7 +613,9 @@ export interface FileRoutesByTo {
   '/system-settings/security/$section': typeof AuthenticatedSystemSettingsSecuritySectionRoute
   '/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
   '/apps/canvas': typeof AuthenticatedAppsCanvasIndexRoute
+  '/apps/ecom': typeof AuthenticatedAppsEcomIndexRoute
   '/apps/midjourney': typeof AuthenticatedAppsMidjourneyIndexRoute
+  '/system-settings/agent': typeof AuthenticatedSystemSettingsAgentIndexRoute
   '/system-settings/auth': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/system-settings/billing': typeof AuthenticatedSystemSettingsBillingIndexRoute
   '/system-settings/content': typeof AuthenticatedSystemSettingsContentIndexRoute
@@ -651,6 +678,7 @@ export interface FileRoutesById {
   '/_authenticated/users/': typeof AuthenticatedUsersIndexRoute
   '/_authenticated/wallet/': typeof AuthenticatedWalletIndexRoute
   '/pricing/$modelId/': typeof PricingModelIdIndexRoute
+  '/_authenticated/apps/canvas/$canvasId': typeof AuthenticatedAppsCanvasCanvasIdRoute
   '/_authenticated/system-settings/auth/$section': typeof AuthenticatedSystemSettingsAuthSectionRoute
   '/_authenticated/system-settings/billing/$section': typeof AuthenticatedSystemSettingsBillingSectionRoute
   '/_authenticated/system-settings/content/$section': typeof AuthenticatedSystemSettingsContentSectionRoute
@@ -660,7 +688,9 @@ export interface FileRoutesById {
   '/_authenticated/system-settings/security/$section': typeof AuthenticatedSystemSettingsSecuritySectionRoute
   '/_authenticated/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
   '/_authenticated/apps/canvas/': typeof AuthenticatedAppsCanvasIndexRoute
+  '/_authenticated/apps/ecom/': typeof AuthenticatedAppsEcomIndexRoute
   '/_authenticated/apps/midjourney/': typeof AuthenticatedAppsMidjourneyIndexRoute
+  '/_authenticated/system-settings/agent/': typeof AuthenticatedSystemSettingsAgentIndexRoute
   '/_authenticated/system-settings/auth/': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/_authenticated/system-settings/billing/': typeof AuthenticatedSystemSettingsBillingIndexRoute
   '/_authenticated/system-settings/content/': typeof AuthenticatedSystemSettingsContentIndexRoute
@@ -722,6 +752,7 @@ export interface FileRouteTypes {
     | '/users/'
     | '/wallet/'
     | '/pricing/$modelId/'
+    | '/apps/canvas/$canvasId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
     | '/system-settings/content/$section'
@@ -731,7 +762,9 @@ export interface FileRouteTypes {
     | '/system-settings/security/$section'
     | '/system-settings/site/$section'
     | '/apps/canvas/'
+    | '/apps/ecom/'
     | '/apps/midjourney/'
+    | '/system-settings/agent/'
     | '/system-settings/auth/'
     | '/system-settings/billing/'
     | '/system-settings/content/'
@@ -790,6 +823,7 @@ export interface FileRouteTypes {
     | '/users'
     | '/wallet'
     | '/pricing/$modelId'
+    | '/apps/canvas/$canvasId'
     | '/system-settings/auth/$section'
     | '/system-settings/billing/$section'
     | '/system-settings/content/$section'
@@ -799,7 +833,9 @@ export interface FileRouteTypes {
     | '/system-settings/security/$section'
     | '/system-settings/site/$section'
     | '/apps/canvas'
+    | '/apps/ecom'
     | '/apps/midjourney'
+    | '/system-settings/agent'
     | '/system-settings/auth'
     | '/system-settings/billing'
     | '/system-settings/content'
@@ -861,6 +897,7 @@ export interface FileRouteTypes {
     | '/_authenticated/users/'
     | '/_authenticated/wallet/'
     | '/pricing/$modelId/'
+    | '/_authenticated/apps/canvas/$canvasId'
     | '/_authenticated/system-settings/auth/$section'
     | '/_authenticated/system-settings/billing/$section'
     | '/_authenticated/system-settings/content/$section'
@@ -870,7 +907,9 @@ export interface FileRouteTypes {
     | '/_authenticated/system-settings/security/$section'
     | '/_authenticated/system-settings/site/$section'
     | '/_authenticated/apps/canvas/'
+    | '/_authenticated/apps/ecom/'
     | '/_authenticated/apps/midjourney/'
+    | '/_authenticated/system-settings/agent/'
     | '/_authenticated/system-settings/auth/'
     | '/_authenticated/system-settings/billing/'
     | '/_authenticated/system-settings/content/'
@@ -1254,12 +1293,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppsCanvasIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/apps/canvas/$canvasId': {
+      id: '/_authenticated/apps/canvas/$canvasId'
+      path: '/apps/canvas/$canvasId'
+      fullPath: '/apps/canvas/$canvasId'
+      preLoaderRoute: typeof AuthenticatedAppsCanvasCanvasIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apps/ecom/': {
+      id: '/_authenticated/apps/ecom/'
+      path: '/apps/ecom'
+      fullPath: '/apps/ecom/'
+      preLoaderRoute: typeof AuthenticatedAppsEcomIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/apps/midjourney/': {
       id: '/_authenticated/apps/midjourney/'
       path: '/apps/midjourney'
       fullPath: '/apps/midjourney/'
       preLoaderRoute: typeof AuthenticatedAppsMidjourneyIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/system-settings/agent/': {
+      id: '/_authenticated/system-settings/agent/'
+      path: '/agent'
+      fullPath: '/system-settings/agent/'
+      preLoaderRoute: typeof AuthenticatedSystemSettingsAgentIndexRouteImport
+      parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
     }
     '/_authenticated/system-settings/auth/': {
       id: '/_authenticated/system-settings/auth/'
@@ -1426,6 +1486,7 @@ interface AuthenticatedSystemSettingsRouteRouteChildren {
   AuthenticatedSystemSettingsRequestPoliciesSectionRoute: typeof AuthenticatedSystemSettingsRequestPoliciesSectionRoute
   AuthenticatedSystemSettingsSecuritySectionRoute: typeof AuthenticatedSystemSettingsSecuritySectionRoute
   AuthenticatedSystemSettingsSiteSectionRoute: typeof AuthenticatedSystemSettingsSiteSectionRoute
+  AuthenticatedSystemSettingsAgentIndexRoute: typeof AuthenticatedSystemSettingsAgentIndexRoute
   AuthenticatedSystemSettingsAuthIndexRoute: typeof AuthenticatedSystemSettingsAuthIndexRoute
   AuthenticatedSystemSettingsBillingIndexRoute: typeof AuthenticatedSystemSettingsBillingIndexRoute
   AuthenticatedSystemSettingsContentIndexRoute: typeof AuthenticatedSystemSettingsContentIndexRoute
@@ -1456,6 +1517,8 @@ const AuthenticatedSystemSettingsRouteRouteChildren: AuthenticatedSystemSettings
       AuthenticatedSystemSettingsSecuritySectionRoute,
     AuthenticatedSystemSettingsSiteSectionRoute:
       AuthenticatedSystemSettingsSiteSectionRoute,
+    AuthenticatedSystemSettingsAgentIndexRoute:
+      AuthenticatedSystemSettingsAgentIndexRoute,
     AuthenticatedSystemSettingsAuthIndexRoute:
       AuthenticatedSystemSettingsAuthIndexRoute,
     AuthenticatedSystemSettingsBillingIndexRoute:
@@ -1504,7 +1567,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
   AuthenticatedUsersIndexRoute: typeof AuthenticatedUsersIndexRoute
   AuthenticatedWalletIndexRoute: typeof AuthenticatedWalletIndexRoute
+  AuthenticatedAppsCanvasCanvasIdRoute: typeof AuthenticatedAppsCanvasCanvasIdRoute
   AuthenticatedAppsCanvasIndexRoute: typeof AuthenticatedAppsCanvasIndexRoute
+  AuthenticatedAppsEcomIndexRoute: typeof AuthenticatedAppsEcomIndexRoute
   AuthenticatedAppsMidjourneyIndexRoute: typeof AuthenticatedAppsMidjourneyIndexRoute
   AuthenticatedAppsMidjourneyStylesBoardIdRoute: typeof AuthenticatedAppsMidjourneyStylesBoardIdRoute
   AuthenticatedAppsMidjourneyStylesIndexRoute: typeof AuthenticatedAppsMidjourneyStylesIndexRoute
@@ -1537,7 +1602,9 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
   AuthenticatedUsersIndexRoute: AuthenticatedUsersIndexRoute,
   AuthenticatedWalletIndexRoute: AuthenticatedWalletIndexRoute,
+  AuthenticatedAppsCanvasCanvasIdRoute: AuthenticatedAppsCanvasCanvasIdRoute,
   AuthenticatedAppsCanvasIndexRoute: AuthenticatedAppsCanvasIndexRoute,
+  AuthenticatedAppsEcomIndexRoute: AuthenticatedAppsEcomIndexRoute,
   AuthenticatedAppsMidjourneyIndexRoute: AuthenticatedAppsMidjourneyIndexRoute,
   AuthenticatedAppsMidjourneyStylesBoardIdRoute:
     AuthenticatedAppsMidjourneyStylesBoardIdRoute,

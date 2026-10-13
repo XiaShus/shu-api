@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import type { TFunction } from 'i18next'
 import {
+  Bot,
   Box,
   Route,
   CreditCard,
@@ -91,6 +92,11 @@ function getSystemSettingsNavGroups(t: TFunction): NavGroup[] {
           title: t('Operations'),
           icon: Wrench,
           items: getOperationsSectionNavItems(t),
+        },
+        {
+          title: t('Agent tools'),
+          icon: Bot,
+          url: '/system-settings/agent',
         },
       ],
     },

@@ -86,3 +86,50 @@ export async function getUserGroups(): Promise<GroupOption[]> {
     desc: info.desc,
   }))
 }
+
+export type WorkbenchSession = {
+  id: number
+  user_id: number
+  kind: string
+  title: string
+  layout: string
+  payload: string
+  created_at: number
+  updated_at: number
+}
+
+export async function listWorkbenchSessions(kind: string): Promise<WorkbenchSession[]> {
+  const res = await api.get('/api/user/workbench-sessions', { params: { kind } })
+  requireServerSuccess(res.data)
+  return (res.data.data ?? []) as WorkbenchSession[]
+}
+
+export async function getWorkbenchSession(id: number): Promise<WorkbenchSession> {
+  const res = await api.get(`/api/user/workbench-sessions/${id}`)
+  requireServerSuccess(res.data)
+  return res.data.data as WorkbenchSession
+}
+
+export async function updateWorkbenchSession(
+  id: number,
+  body: { title: string; layout: string; payload: string }
+) {
+  const res = await api.put(`/api/user/workbench-sessions/${id}`, body)
+  requireServerSuccess(res.data)
+}
+
+export async function deleteWorkbenchSession(id: number) {
+  const res = await api.delete(`/api/user/workbench-sessions/${id}`)
+  requireServerSuccess(res.data)
+}
+
+export async function createWorkbenchSession(body: {
+  kind: string
+  title: string
+  layout: string
+  payload: string
+}) {
+  const res = await api.post('/api/user/workbench-sessions', body)
+  requireServerSuccess(res.data)
+  return res.data.data as WorkbenchSession
+}

@@ -2,7 +2,7 @@ import axios from 'axios'
 
 import { api } from '@/lib/api'
 
-import { normalizeCanvasDraft, type CanvasDraft } from './types'
+import { emptyCanvasDraft, normalizeCanvasDraft, type CanvasDraft } from './types'
 
 function failureMessage(cause: unknown) {
   if (axios.isAxiosError(cause)) {
@@ -21,6 +21,18 @@ export async function getCanvasDraft(): Promise<CanvasDraft | null> {
 
 export async function saveCanvasDraft(draft: CanvasDraft) {
   await api.put('/api/user/canvas-draft', draft)
+}
+
+export async function createCanvasSession(title: string, draft?: CanvasDraft) {
+  const res = await api.post('/api/user/workbench-sessions', {
+    kind: 'canvas',
+    title,
+    layout: 'immersive',
+    payload: JSON.stringify(draft ?? emptyCanvasDraft()),
+  })
+  const body = res.data as { success?: boolean; data?: { id: number } }
+  if (!body.success || !body.data?.id) throw new Error('Request failed')
+  return body.data
 }
 
 export async function sendCanvasChat(body: { model: string; group: string; text: string }) {

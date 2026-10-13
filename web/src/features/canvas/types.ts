@@ -15,6 +15,39 @@ export type ImageNodeData = {
   error: string
 }
 
+export const contentNodeTypes = [
+  'video',
+  'audio',
+  'drawing',
+  'script',
+  'skill',
+  'config',
+  'frame',
+  'markdown',
+  'svg',
+  'html',
+  'panorama',
+  'compare',
+  'chart',
+  'colorgrade',
+  'media-conversion',
+  'batch-table',
+  'director',
+] as const
+
+export type ContentNodeType = (typeof contentNodeTypes)[number]
+
+export type ContentNodeData = {
+  text: string
+  prompt: string
+  reply: string
+  model: string
+  url: string
+  status: CanvasNodeStatus
+  error: string
+  jobId: string
+}
+
 export type CanvasNode =
   | {
       id: string
@@ -27,6 +60,12 @@ export type CanvasNode =
       type: 'image'
       position: { x: number; y: number }
       data: ImageNodeData
+    }
+  | {
+      id: string
+      type: ContentNodeType
+      position: { x: number; y: number }
+      data: ContentNodeData
     }
 
 export type CanvasEdge = {
@@ -46,6 +85,15 @@ export type CanvasDraft = {
   nodes: CanvasNode[]
   edges: CanvasEdge[]
   viewport: CanvasViewport
+}
+
+export function draftFromPayload(payload: string): CanvasDraft {
+  if (!payload.trim()) return emptyCanvasDraft()
+  try {
+    return normalizeCanvasDraft(JSON.parse(payload)) ?? emptyCanvasDraft()
+  } catch {
+    return emptyCanvasDraft()
+  }
 }
 
 export function emptyCanvasDraft(): CanvasDraft {
@@ -102,6 +150,23 @@ export function normalizeCanvasDraft(value: unknown): CanvasDraft | null {
             status: statusOf(data.status),
             url: typeof data.url === 'string' ? data.url : '',
             error: typeof data.error === 'string' ? data.error : '',
+          },
+        })
+      }
+      if (contentNodeTypes.includes(item.type as ContentNodeType)) {
+        nodes.push({
+          id: item.id,
+          type: item.type as ContentNodeType,
+          position: { x, y },
+          data: {
+            text: typeof data.text === 'string' ? data.text : '',
+            prompt: typeof data.prompt === 'string' ? data.prompt : '',
+            reply: typeof data.reply === 'string' ? data.reply : '',
+            model: typeof data.model === 'string' ? data.model : '',
+            url: typeof data.url === 'string' ? data.url : '',
+            status: statusOf(data.status),
+            error: typeof data.error === 'string' ? data.error : '',
+            jobId: typeof data.jobId === 'string' ? data.jobId : '',
           },
         })
       }

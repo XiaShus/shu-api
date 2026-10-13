@@ -100,6 +100,12 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.GET("/self", controller.GetSelf)
 				selfRoute.GET("/canvas-draft", controller.GetCanvasDraft)
 				selfRoute.PUT("/canvas-draft", controller.PutCanvasDraft)
+				selfRoute.GET("/workbench-sessions", controller.ListWorkbenchSessions)
+				selfRoute.POST("/workbench-sessions", controller.CreateWorkbenchSession)
+				selfRoute.GET("/workbench-sessions/:id", controller.GetWorkbenchSession)
+				selfRoute.PUT("/workbench-sessions/:id", controller.UpdateWorkbenchSession)
+				selfRoute.DELETE("/workbench-sessions/:id", controller.DeleteWorkbenchSession)
+				selfRoute.GET("/ecom/templates", controller.ListEcomTemplates)
 				selfRoute.GET("/models", controller.GetUserModels)
 				selfRoute.PUT("/self", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.UpdateSelf)
 				selfRoute.DELETE("/self", middleware.DisableCache(), controller.DeleteSelf)
@@ -211,6 +217,14 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/subscription/epay/notify", controller.SubscriptionEpayNotify)
 		apiRouter.GET("/subscription/epay/return", controller.SubscriptionEpayReturn)
 		apiRouter.POST("/subscription/epay/return", anonymousRequestBodyLimit, controller.SubscriptionEpayReturn)
+		agentRoute := apiRouter.Group("/agent")
+		agentRoute.Use(middleware.RootAuth())
+		{
+			agentRoute.GET("/configs", controller.ListAgentConfigs)
+			agentRoute.POST("/configs", controller.CreateAgentConfig)
+			agentRoute.PUT("/configs/:id", controller.UpdateAgentConfig)
+			agentRoute.DELETE("/configs/:id", controller.DeleteAgentConfig)
+		}
 		optionRoute := apiRouter.Group("/option")
 		optionRoute.Use(middleware.RootAuth())
 		{

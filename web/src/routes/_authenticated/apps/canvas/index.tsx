@@ -19,7 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { createFileRoute, redirect } from '@tanstack/react-router'
 
 import { Main } from '@/components/layout'
-import { CanvasPage } from '@/features/canvas'
+import { StudioHome } from '@/features/canvas'
 import { isSidebarModuleEnabled } from '@/lib/nav-modules'
 
 export const Route = createFileRoute('/_authenticated/apps/canvas/')({
@@ -34,7 +34,7 @@ export const Route = createFileRoute('/_authenticated/apps/canvas/')({
 function CanvasRoute() {
   return (
     <Main className='p-0'>
-      <CanvasPage />
+      <StudioHome />
     </Main>
   )
 }

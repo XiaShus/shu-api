@@ -377,6 +377,9 @@ func migrateDB() error {
 		&CasbinRule{},
 		&AuthzRole{},
 		&CanvasDraft{},
+		&WorkbenchSession{},
+		&EcomTemplate{},
+		&AgentConfig{},
 		&UserAccessToken{},
 	)
 	if err != nil {
