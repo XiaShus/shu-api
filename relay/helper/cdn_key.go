@@ -77,10 +77,13 @@ func extractMultipartCdnKey(c *gin.Context) (string, bool) {
 		return "", false
 	}
 	values := form.Value["cdn_key"]
-	key := ""
-	if len(values) > 0 {
-		key = strings.TrimSpace(values[0])
+	if len(values) == 0 {
+		// Nothing to strip, so the body stays as the client sent it. Rebuilding
+		// it would re-encode every part for no reason and drop the part
+		// Content-Type headers the upstream request needs.
+		return "", false
 	}
+	key := strings.TrimSpace(values[0])
 	rewritten, newCT, err := rebuildMultipartWithoutCdnKey(form)
 	if err != nil {
 		return key, key != ""

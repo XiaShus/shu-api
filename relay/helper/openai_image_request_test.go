@@ -115,6 +115,80 @@ func TestGetAndValidOpenAIImageRequestMultipartStream(t *testing.T) {
 	})
 }
 
+// TestMultipartImageEditParsesAfterCdnKeyRewrite locks the regression where
+// every multipart image edit failed before reaching the upstream:
+// ExtractCdnKey rebuilt the body with a fresh boundary, while
+// common.ParseMultipartFormReusable kept parsing later calls with the boundary
+// that rewrite had retired. The reader then walked part headers and image bytes
+// as body data, returning "multipart: NextPart: EOF" for a short part and
+// "multipart: NextPart: bufio: buffer full" for a binary part with no line feed.
+func TestMultipartImageEditParsesAfterCdnKeyRewrite(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	// A part body without any '\n' byte is what makes the desynchronized reader
+	// overrun the stdlib line buffer instead of stopping at EOF.
+	imagePart := func(size int) []byte {
+		data := bytes.Repeat([]byte{0xAB}, size)
+		return append([]byte{0x89, 'P', 'N', 'G'}, data...)
+	}
+
+	for _, tc := range []struct {
+		name       string
+		imageField string
+		image      []byte
+		cdnKey     string
+	}{
+		{name: "image array field with a short part", imageField: "image[]", image: imagePart(89)},
+		{name: "image array field with a large binary part", imageField: "image[]", image: imagePart(95 << 10)},
+		{name: "image field with cdn key", imageField: "image", image: imagePart(89), cdnKey: "cdn-key-1"},
+		{name: "image field with cdn key and a large binary part", imageField: "image", image: imagePart(95 << 10), cdnKey: "cdn-key-2"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var body bytes.Buffer
+			writer := multipart.NewWriter(&body)
+			require.NoError(t, writer.WriteField("model", "gpt-image-2.5-flare"))
+			require.NoError(t, writer.WriteField("prompt", "make the background pure blue"))
+			require.NoError(t, writer.WriteField("size", "1024x1024"))
+			require.NoError(t, writer.WriteField("response_format", "b64_json"))
+			if tc.cdnKey != "" {
+				require.NoError(t, writer.WriteField("cdn_key", tc.cdnKey))
+			}
+			part, err := writer.CreateFormFile(tc.imageField, "test.png")
+			require.NoError(t, err)
+			_, err = part.Write(tc.image)
+			require.NoError(t, err)
+			require.NoError(t, writer.Close())
+
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/images/edits", &body)
+			c.Request.Header.Set("Content-Type", writer.FormDataContentType())
+
+			require.Equal(t, tc.cdnKey, ExtractCdnKey(c))
+
+			request, err := GetAndValidOpenAIImageRequest(c, relayconstant.RelayModeImagesEdits)
+			require.NoError(t, err)
+			require.Equal(t, "gpt-image-2.5-flare", request.Model)
+			require.Equal(t, "make the background pure blue", request.Prompt)
+			require.Equal(t, "1024x1024", request.Size)
+
+			// The upstream request is rebuilt from this form, so the stored body
+			// must keep parsing with the boundary of its own Content-Type and
+			// keep every image byte.
+			form, err := common.ParseMultipartFormReusable(c)
+			require.NoError(t, err)
+			defer form.RemoveAll()
+			require.NotContains(t, form.Value, "cdn_key")
+			require.Len(t, form.File[tc.imageField], 1)
+			file, err := form.File[tc.imageField][0].Open()
+			require.NoError(t, err)
+			defer file.Close()
+			stored, err := io.ReadAll(file)
+			require.NoError(t, err)
+			require.Equal(t, tc.image, stored)
+		})
+	}
+}
+
 // Provider `parameters.n` is still bounded at ingress so a malformed multiplier
 // is a client error, but the billing quantity always follows the top-level n:
 // Ali image requests are served by the alibaba task plugin, which owns the

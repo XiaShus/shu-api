@@ -147,7 +147,7 @@ func UnmarshalBodyReusable(c *gin.Context, v any) error {
 	} else if strings.Contains(contentType, gin.MIMEPOSTForm) {
 		err = parseFormData(requestBody, v)
 	} else if strings.Contains(contentType, gin.MIMEMultipartPOSTForm) {
-		err = parseMultipartFormData(c, requestBody, v)
+		err = parseMultipartFormData(c, storage, requestBody, v)
 	} else {
 		// skip for now
 		// TODO: someday non json request have variant model, we will need to implementation this
@@ -305,16 +305,7 @@ func ParseMultipartFormReusable(c *gin.Context) (*multipart.Form, error) {
 		return nil, err
 	}
 
-	// Use the original Content-Type saved on first call to avoid boundary
-	// mismatch when callers overwrite c.Request.Header after multipart rebuild.
-	var contentType string
-	if saved, ok := c.Get("_original_multipart_ct"); ok {
-		contentType = saved.(string)
-	} else {
-		contentType = c.Request.Header.Get("Content-Type")
-		c.Set("_original_multipart_ct", contentType)
-	}
-	boundary, err := parseBoundary(contentType)
+	boundary, err := parseBoundary(multipartContentType(c, storage))
 	if err != nil {
 		return nil, err
 	}
@@ -331,6 +322,33 @@ func ParseMultipartFormReusable(c *gin.Context) (*multipart.Form, error) {
 	}
 	c.Request.Body = io.NopCloser(storage)
 	return form, nil
+}
+
+// contextKeyMultipartContentType caches the boundary-bearing Content-Type that
+// belongs to the body storage currently held by the context.
+const contextKeyMultipartContentType = "_original_multipart_ct"
+
+type multipartContentTypeCache struct {
+	storage     BodyStorage
+	contentType string
+}
+
+// multipartContentType resolves the Content-Type to parse c's stored body with.
+// An adaptor may overwrite c.Request.Header with the boundary of a body it
+// rebuilt for the upstream request while the storage still holds the bytes the
+// handler parsed (the audio adaptor does), so the first Content-Type seen for a
+// given storage wins. Tying the cached value to the storage instance makes a
+// replacement — a cdn_key rewrite or a task plugin model patch — re-read the
+// header instead of parsing the new bytes with the retired boundary.
+func multipartContentType(c *gin.Context, storage BodyStorage) string {
+	if cached, ok := c.Get(contextKeyMultipartContentType); ok {
+		if entry, ok := cached.(multipartContentTypeCache); ok && entry.storage == storage {
+			return entry.contentType
+		}
+	}
+	contentType := c.Request.Header.Get("Content-Type")
+	c.Set(contextKeyMultipartContentType, multipartContentTypeCache{storage: storage, contentType: contentType})
+	return contentType
 }
 
 func processFormMap(formMap map[string]any, v any) error {
@@ -364,15 +382,8 @@ func parseFormData(data []byte, v any) error {
 	return processFormMap(formMap, v)
 }
 
-func parseMultipartFormData(c *gin.Context, data []byte, v any) error {
-	var contentType string
-	if saved, ok := c.Get("_original_multipart_ct"); ok {
-		contentType = saved.(string)
-	} else {
-		contentType = c.Request.Header.Get("Content-Type")
-		c.Set("_original_multipart_ct", contentType)
-	}
-	boundary, err := parseBoundary(contentType)
+func parseMultipartFormData(c *gin.Context, storage BodyStorage, data []byte, v any) error {
+	boundary, err := parseBoundary(multipartContentType(c, storage))
 	if err != nil {
 		if errors.Is(err, errBoundaryNotFound) {
 			return Unmarshal(data, v) // Fallback to JSON
