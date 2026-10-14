@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useLocation } from '@tanstack/react-router'
+
 import { AnimatedOutlet } from '@/components/page-transition'
 import { SkipToMain } from '@/components/skip-to-main'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -26,13 +28,44 @@ import { cn } from '@/lib/utils'
 
 import { AppHeader } from './app-header'
 import { AppSidebar } from './app-sidebar'
+import { WorkspaceSidebar } from './workspace-sidebar'
 
 type AuthenticatedLayoutProps = {
   children?: React.ReactNode
 }
 
+/**
+ * The creative workspace owns its own chrome: those routes show the workspace
+ * sidebar instead of the admin header and console sidebar, so the two shells
+ * never stack.
+ */
+function isWorkspacePath(pathname: string) {
+  return (
+    pathname === '/apps' ||
+    pathname.startsWith('/apps/') ||
+    pathname.startsWith('/playground')
+  )
+}
+
 export function AuthenticatedLayout(props: AuthenticatedLayoutProps) {
   const defaultOpen = getCookie('sidebar_state') !== 'false'
+  const pathname = useLocation({ select: (location) => location.pathname })
+
+  if (isWorkspacePath(pathname)) {
+    return (
+      <LayoutProvider>
+        <SearchProvider>
+          <div className='flex h-svh min-h-0 w-full overflow-hidden'>
+            <SkipToMain />
+            <WorkspaceSidebar />
+            <main className='flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden'>
+              {props.children ?? <AnimatedOutlet />}
+            </main>
+          </div>
+        </SearchProvider>
+      </LayoutProvider>
+    )
+  }
 
   return (
     <LayoutProvider>

@@ -134,18 +134,23 @@ export function AppExperience() {
     writeSearch(nextMode, nextModel)
   }
 
+  const buckets = catalogModels(models, pricingModels)
+  const imageModels = buckets.image
+
   return (
     <div className='relative flex size-full min-h-0 flex-col overflow-hidden'>
-      <ExperienceBar
-        mode={mode}
-        model={config.model}
-        models={models}
-        pricingModels={pricingModels}
-        group={config.group}
-        groups={groups}
-        onPick={pickModel}
-        onGroupChange={(value) => updateConfig('group', value)}
-      />
+      {mode === 'image' ? null : (
+        <ExperienceBar
+          mode={mode}
+          model={config.model}
+          models={models}
+          pricingModels={pricingModels}
+          group={config.group}
+          groups={groups}
+          onPick={pickModel}
+          onGroupChange={(value) => updateConfig('group', value)}
+        />
+      )}
       {mode === 'chat' ? (
         <>
           <div className='flex min-h-0 flex-1 flex-col overflow-hidden'>
@@ -189,7 +194,14 @@ export function AppExperience() {
           </div>
         </>
       ) : null}
-      {mode === 'image' ? <ImagePanel model={config.model} group={config.group} /> : null}
+      {mode === 'image' ? (
+        <ImagePanel
+          model={config.model}
+          models={imageModels}
+          group={config.group}
+          onModelChange={(value) => pickModel(mode, value)}
+        />
+      ) : null}
       {mode === 'video' ? <VideoPanel model={config.model} group={config.group} /> : null}
       {mode === 'audio' ? <AudioPanel model={config.model} group={config.group} /> : null}
     </div>

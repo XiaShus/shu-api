@@ -77,7 +77,7 @@ export function useTopNavLinks(): TopNavLink[] {
     links.push({
       title: t('App Center'),
       href: '/apps',
-      requiresAuth: true,
+      requiresAuth: !isAuthed,
     })
   }
 

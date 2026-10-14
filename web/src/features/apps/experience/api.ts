@@ -32,6 +32,10 @@ export async function sendImageGeneration(body: {
   n: number
   size: string
   group: string
+  quality?: string
+  background?: string
+  output_format?: string
+  moderation?: string
 }) {
   try {
     const res = await api.post(API_ENDPOINTS.IMAGE_GENERATIONS, body, {

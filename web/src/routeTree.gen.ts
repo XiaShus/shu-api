@@ -61,7 +61,13 @@ import { Route as PricingModelIdIndexRouteImport } from './routes/pricing/$model
 import { Route as AuthenticatedAppsCanvasIndexRouteImport } from './routes/_authenticated/apps/canvas/index'
 import { Route as AuthenticatedAppsCanvasCanvasIdRouteImport } from './routes/_authenticated/apps/canvas/$canvasId'
 import { Route as AuthenticatedAppsEcomIndexRouteImport } from './routes/_authenticated/apps/ecom/index'
+import { Route as AuthenticatedAppsGalleryIndexRouteImport } from './routes/_authenticated/apps/gallery/index'
+import { Route as AuthenticatedAppsHomeIndexRouteImport } from './routes/_authenticated/apps/home/index'
+import { Route as AuthenticatedAppsIdeIndexRouteImport } from './routes/_authenticated/apps/ide/index'
+import { Route as AuthenticatedAppsKbIndexRouteImport } from './routes/_authenticated/apps/kb/index'
 import { Route as AuthenticatedAppsMidjourneyIndexRouteImport } from './routes/_authenticated/apps/midjourney/index'
+import { Route as AuthenticatedAppsPptIndexRouteImport } from './routes/_authenticated/apps/ppt/index'
+import { Route as AuthenticatedAppsSearchIndexRouteImport } from './routes/_authenticated/apps/search/index'
 import { Route as AuthenticatedSystemSettingsAgentIndexRouteImport } from './routes/_authenticated/system-settings/agent/index'
 import { Route as AuthenticatedSystemSettingsAuthIndexRouteImport } from './routes/_authenticated/system-settings/auth/index'
 import { Route as AuthenticatedSystemSettingsAuthSectionRouteImport } from './routes/_authenticated/system-settings/auth/$section'
@@ -69,6 +75,8 @@ import { Route as AuthenticatedSystemSettingsBillingIndexRouteImport } from './r
 import { Route as AuthenticatedSystemSettingsBillingSectionRouteImport } from './routes/_authenticated/system-settings/billing/$section'
 import { Route as AuthenticatedSystemSettingsContentIndexRouteImport } from './routes/_authenticated/system-settings/content/index'
 import { Route as AuthenticatedSystemSettingsContentSectionRouteImport } from './routes/_authenticated/system-settings/content/$section'
+import { Route as AuthenticatedSystemSettingsDesktopIndexRouteImport } from './routes/_authenticated/system-settings/desktop/index'
+import { Route as AuthenticatedSystemSettingsFilmIndexRouteImport } from './routes/_authenticated/system-settings/film/index'
 import { Route as AuthenticatedSystemSettingsModelsIndexRouteImport } from './routes/_authenticated/system-settings/models/index'
 import { Route as AuthenticatedSystemSettingsModelsSectionRouteImport } from './routes/_authenticated/system-settings/models/$section'
 import { Route as AuthenticatedSystemSettingsOperationsIndexRouteImport } from './routes/_authenticated/system-settings/operations/index'
@@ -79,6 +87,7 @@ import { Route as AuthenticatedSystemSettingsSecurityIndexRouteImport } from './
 import { Route as AuthenticatedSystemSettingsSecuritySectionRouteImport } from './routes/_authenticated/system-settings/security/$section'
 import { Route as AuthenticatedSystemSettingsSiteIndexRouteImport } from './routes/_authenticated/system-settings/site/index'
 import { Route as AuthenticatedSystemSettingsSiteSectionRouteImport } from './routes/_authenticated/system-settings/site/$section'
+import { Route as AuthenticatedSystemSettingsWechatIndexRouteImport } from './routes/_authenticated/system-settings/wechat/index'
 import { Route as AuthenticatedAppsMidjourneyStylesIndexRouteImport } from './routes/_authenticated/apps/midjourney/styles/index'
 import { Route as AuthenticatedAppsMidjourneyStylesBoardIdRouteImport } from './routes/_authenticated/apps/midjourney/styles/$boardId'
 
@@ -363,10 +372,46 @@ const AuthenticatedAppsEcomIndexRoute =
     path: '/apps/ecom/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAppsGalleryIndexRoute =
+  AuthenticatedAppsGalleryIndexRouteImport.update({
+    id: '/apps/gallery/',
+    path: '/apps/gallery/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppsHomeIndexRoute =
+  AuthenticatedAppsHomeIndexRouteImport.update({
+    id: '/apps/home/',
+    path: '/apps/home/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppsIdeIndexRoute =
+  AuthenticatedAppsIdeIndexRouteImport.update({
+    id: '/apps/ide/',
+    path: '/apps/ide/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppsKbIndexRoute =
+  AuthenticatedAppsKbIndexRouteImport.update({
+    id: '/apps/kb/',
+    path: '/apps/kb/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAppsMidjourneyIndexRoute =
   AuthenticatedAppsMidjourneyIndexRouteImport.update({
     id: '/apps/midjourney/',
     path: '/apps/midjourney/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppsPptIndexRoute =
+  AuthenticatedAppsPptIndexRouteImport.update({
+    id: '/apps/ppt/',
+    path: '/apps/ppt/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAppsSearchIndexRoute =
+  AuthenticatedAppsSearchIndexRouteImport.update({
+    id: '/apps/search/',
+    path: '/apps/search/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSystemSettingsAgentIndexRoute =
@@ -409,6 +454,18 @@ const AuthenticatedSystemSettingsContentSectionRoute =
   AuthenticatedSystemSettingsContentSectionRouteImport.update({
     id: '/content/$section',
     path: '/content/$section',
+    getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
+  } as any)
+const AuthenticatedSystemSettingsDesktopIndexRoute =
+  AuthenticatedSystemSettingsDesktopIndexRouteImport.update({
+    id: '/desktop/',
+    path: '/desktop/',
+    getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
+  } as any)
+const AuthenticatedSystemSettingsFilmIndexRoute =
+  AuthenticatedSystemSettingsFilmIndexRouteImport.update({
+    id: '/film/',
+    path: '/film/',
     getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
   } as any)
 const AuthenticatedSystemSettingsModelsIndexRoute =
@@ -469,6 +526,12 @@ const AuthenticatedSystemSettingsSiteSectionRoute =
   AuthenticatedSystemSettingsSiteSectionRouteImport.update({
     id: '/site/$section',
     path: '/site/$section',
+    getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
+  } as any)
+const AuthenticatedSystemSettingsWechatIndexRoute =
+  AuthenticatedSystemSettingsWechatIndexRouteImport.update({
+    id: '/wechat/',
+    path: '/wechat/',
     getParentRoute: () => AuthenticatedSystemSettingsRouteRoute,
   } as any)
 const AuthenticatedAppsMidjourneyStylesIndexRoute =
@@ -543,16 +606,25 @@ export interface FileRoutesByFullPath {
   '/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
   '/apps/canvas/': typeof AuthenticatedAppsCanvasIndexRoute
   '/apps/ecom/': typeof AuthenticatedAppsEcomIndexRoute
+  '/apps/gallery/': typeof AuthenticatedAppsGalleryIndexRoute
+  '/apps/home/': typeof AuthenticatedAppsHomeIndexRoute
+  '/apps/ide/': typeof AuthenticatedAppsIdeIndexRoute
+  '/apps/kb/': typeof AuthenticatedAppsKbIndexRoute
   '/apps/midjourney/': typeof AuthenticatedAppsMidjourneyIndexRoute
+  '/apps/ppt/': typeof AuthenticatedAppsPptIndexRoute
+  '/apps/search/': typeof AuthenticatedAppsSearchIndexRoute
   '/system-settings/agent/': typeof AuthenticatedSystemSettingsAgentIndexRoute
   '/system-settings/auth/': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/system-settings/billing/': typeof AuthenticatedSystemSettingsBillingIndexRoute
   '/system-settings/content/': typeof AuthenticatedSystemSettingsContentIndexRoute
+  '/system-settings/desktop/': typeof AuthenticatedSystemSettingsDesktopIndexRoute
+  '/system-settings/film/': typeof AuthenticatedSystemSettingsFilmIndexRoute
   '/system-settings/models/': typeof AuthenticatedSystemSettingsModelsIndexRoute
   '/system-settings/operations/': typeof AuthenticatedSystemSettingsOperationsIndexRoute
   '/system-settings/request-policies/': typeof AuthenticatedSystemSettingsRequestPoliciesIndexRoute
   '/system-settings/security/': typeof AuthenticatedSystemSettingsSecurityIndexRoute
   '/system-settings/site/': typeof AuthenticatedSystemSettingsSiteIndexRoute
+  '/system-settings/wechat/': typeof AuthenticatedSystemSettingsWechatIndexRoute
   '/apps/midjourney/styles/$boardId': typeof AuthenticatedAppsMidjourneyStylesBoardIdRoute
   '/apps/midjourney/styles/': typeof AuthenticatedAppsMidjourneyStylesIndexRoute
 }
@@ -614,16 +686,25 @@ export interface FileRoutesByTo {
   '/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
   '/apps/canvas': typeof AuthenticatedAppsCanvasIndexRoute
   '/apps/ecom': typeof AuthenticatedAppsEcomIndexRoute
+  '/apps/gallery': typeof AuthenticatedAppsGalleryIndexRoute
+  '/apps/home': typeof AuthenticatedAppsHomeIndexRoute
+  '/apps/ide': typeof AuthenticatedAppsIdeIndexRoute
+  '/apps/kb': typeof AuthenticatedAppsKbIndexRoute
   '/apps/midjourney': typeof AuthenticatedAppsMidjourneyIndexRoute
+  '/apps/ppt': typeof AuthenticatedAppsPptIndexRoute
+  '/apps/search': typeof AuthenticatedAppsSearchIndexRoute
   '/system-settings/agent': typeof AuthenticatedSystemSettingsAgentIndexRoute
   '/system-settings/auth': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/system-settings/billing': typeof AuthenticatedSystemSettingsBillingIndexRoute
   '/system-settings/content': typeof AuthenticatedSystemSettingsContentIndexRoute
+  '/system-settings/desktop': typeof AuthenticatedSystemSettingsDesktopIndexRoute
+  '/system-settings/film': typeof AuthenticatedSystemSettingsFilmIndexRoute
   '/system-settings/models': typeof AuthenticatedSystemSettingsModelsIndexRoute
   '/system-settings/operations': typeof AuthenticatedSystemSettingsOperationsIndexRoute
   '/system-settings/request-policies': typeof AuthenticatedSystemSettingsRequestPoliciesIndexRoute
   '/system-settings/security': typeof AuthenticatedSystemSettingsSecurityIndexRoute
   '/system-settings/site': typeof AuthenticatedSystemSettingsSiteIndexRoute
+  '/system-settings/wechat': typeof AuthenticatedSystemSettingsWechatIndexRoute
   '/apps/midjourney/styles/$boardId': typeof AuthenticatedAppsMidjourneyStylesBoardIdRoute
   '/apps/midjourney/styles': typeof AuthenticatedAppsMidjourneyStylesIndexRoute
 }
@@ -689,16 +770,25 @@ export interface FileRoutesById {
   '/_authenticated/system-settings/site/$section': typeof AuthenticatedSystemSettingsSiteSectionRoute
   '/_authenticated/apps/canvas/': typeof AuthenticatedAppsCanvasIndexRoute
   '/_authenticated/apps/ecom/': typeof AuthenticatedAppsEcomIndexRoute
+  '/_authenticated/apps/gallery/': typeof AuthenticatedAppsGalleryIndexRoute
+  '/_authenticated/apps/home/': typeof AuthenticatedAppsHomeIndexRoute
+  '/_authenticated/apps/ide/': typeof AuthenticatedAppsIdeIndexRoute
+  '/_authenticated/apps/kb/': typeof AuthenticatedAppsKbIndexRoute
   '/_authenticated/apps/midjourney/': typeof AuthenticatedAppsMidjourneyIndexRoute
+  '/_authenticated/apps/ppt/': typeof AuthenticatedAppsPptIndexRoute
+  '/_authenticated/apps/search/': typeof AuthenticatedAppsSearchIndexRoute
   '/_authenticated/system-settings/agent/': typeof AuthenticatedSystemSettingsAgentIndexRoute
   '/_authenticated/system-settings/auth/': typeof AuthenticatedSystemSettingsAuthIndexRoute
   '/_authenticated/system-settings/billing/': typeof AuthenticatedSystemSettingsBillingIndexRoute
   '/_authenticated/system-settings/content/': typeof AuthenticatedSystemSettingsContentIndexRoute
+  '/_authenticated/system-settings/desktop/': typeof AuthenticatedSystemSettingsDesktopIndexRoute
+  '/_authenticated/system-settings/film/': typeof AuthenticatedSystemSettingsFilmIndexRoute
   '/_authenticated/system-settings/models/': typeof AuthenticatedSystemSettingsModelsIndexRoute
   '/_authenticated/system-settings/operations/': typeof AuthenticatedSystemSettingsOperationsIndexRoute
   '/_authenticated/system-settings/request-policies/': typeof AuthenticatedSystemSettingsRequestPoliciesIndexRoute
   '/_authenticated/system-settings/security/': typeof AuthenticatedSystemSettingsSecurityIndexRoute
   '/_authenticated/system-settings/site/': typeof AuthenticatedSystemSettingsSiteIndexRoute
+  '/_authenticated/system-settings/wechat/': typeof AuthenticatedSystemSettingsWechatIndexRoute
   '/_authenticated/apps/midjourney/styles/$boardId': typeof AuthenticatedAppsMidjourneyStylesBoardIdRoute
   '/_authenticated/apps/midjourney/styles/': typeof AuthenticatedAppsMidjourneyStylesIndexRoute
 }
@@ -763,16 +853,25 @@ export interface FileRouteTypes {
     | '/system-settings/site/$section'
     | '/apps/canvas/'
     | '/apps/ecom/'
+    | '/apps/gallery/'
+    | '/apps/home/'
+    | '/apps/ide/'
+    | '/apps/kb/'
     | '/apps/midjourney/'
+    | '/apps/ppt/'
+    | '/apps/search/'
     | '/system-settings/agent/'
     | '/system-settings/auth/'
     | '/system-settings/billing/'
     | '/system-settings/content/'
+    | '/system-settings/desktop/'
+    | '/system-settings/film/'
     | '/system-settings/models/'
     | '/system-settings/operations/'
     | '/system-settings/request-policies/'
     | '/system-settings/security/'
     | '/system-settings/site/'
+    | '/system-settings/wechat/'
     | '/apps/midjourney/styles/$boardId'
     | '/apps/midjourney/styles/'
   fileRoutesByTo: FileRoutesByTo
@@ -834,16 +933,25 @@ export interface FileRouteTypes {
     | '/system-settings/site/$section'
     | '/apps/canvas'
     | '/apps/ecom'
+    | '/apps/gallery'
+    | '/apps/home'
+    | '/apps/ide'
+    | '/apps/kb'
     | '/apps/midjourney'
+    | '/apps/ppt'
+    | '/apps/search'
     | '/system-settings/agent'
     | '/system-settings/auth'
     | '/system-settings/billing'
     | '/system-settings/content'
+    | '/system-settings/desktop'
+    | '/system-settings/film'
     | '/system-settings/models'
     | '/system-settings/operations'
     | '/system-settings/request-policies'
     | '/system-settings/security'
     | '/system-settings/site'
+    | '/system-settings/wechat'
     | '/apps/midjourney/styles/$boardId'
     | '/apps/midjourney/styles'
   id:
@@ -908,16 +1016,25 @@ export interface FileRouteTypes {
     | '/_authenticated/system-settings/site/$section'
     | '/_authenticated/apps/canvas/'
     | '/_authenticated/apps/ecom/'
+    | '/_authenticated/apps/gallery/'
+    | '/_authenticated/apps/home/'
+    | '/_authenticated/apps/ide/'
+    | '/_authenticated/apps/kb/'
     | '/_authenticated/apps/midjourney/'
+    | '/_authenticated/apps/ppt/'
+    | '/_authenticated/apps/search/'
     | '/_authenticated/system-settings/agent/'
     | '/_authenticated/system-settings/auth/'
     | '/_authenticated/system-settings/billing/'
     | '/_authenticated/system-settings/content/'
+    | '/_authenticated/system-settings/desktop/'
+    | '/_authenticated/system-settings/film/'
     | '/_authenticated/system-settings/models/'
     | '/_authenticated/system-settings/operations/'
     | '/_authenticated/system-settings/request-policies/'
     | '/_authenticated/system-settings/security/'
     | '/_authenticated/system-settings/site/'
+    | '/_authenticated/system-settings/wechat/'
     | '/_authenticated/apps/midjourney/styles/$boardId'
     | '/_authenticated/apps/midjourney/styles/'
   fileRoutesById: FileRoutesById
@@ -1307,11 +1424,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAppsEcomIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/apps/gallery/': {
+      id: '/_authenticated/apps/gallery/'
+      path: '/apps/gallery'
+      fullPath: '/apps/gallery/'
+      preLoaderRoute: typeof AuthenticatedAppsGalleryIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apps/home/': {
+      id: '/_authenticated/apps/home/'
+      path: '/apps/home'
+      fullPath: '/apps/home/'
+      preLoaderRoute: typeof AuthenticatedAppsHomeIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apps/ide/': {
+      id: '/_authenticated/apps/ide/'
+      path: '/apps/ide'
+      fullPath: '/apps/ide/'
+      preLoaderRoute: typeof AuthenticatedAppsIdeIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apps/kb/': {
+      id: '/_authenticated/apps/kb/'
+      path: '/apps/kb'
+      fullPath: '/apps/kb/'
+      preLoaderRoute: typeof AuthenticatedAppsKbIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/apps/midjourney/': {
       id: '/_authenticated/apps/midjourney/'
       path: '/apps/midjourney'
       fullPath: '/apps/midjourney/'
       preLoaderRoute: typeof AuthenticatedAppsMidjourneyIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apps/ppt/': {
+      id: '/_authenticated/apps/ppt/'
+      path: '/apps/ppt'
+      fullPath: '/apps/ppt/'
+      preLoaderRoute: typeof AuthenticatedAppsPptIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/apps/search/': {
+      id: '/_authenticated/apps/search/'
+      path: '/apps/search'
+      fullPath: '/apps/search/'
+      preLoaderRoute: typeof AuthenticatedAppsSearchIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/system-settings/agent/': {
@@ -1361,6 +1520,20 @@ declare module '@tanstack/react-router' {
       path: '/content/$section'
       fullPath: '/system-settings/content/$section'
       preLoaderRoute: typeof AuthenticatedSystemSettingsContentSectionRouteImport
+      parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
+    }
+    '/_authenticated/system-settings/desktop/': {
+      id: '/_authenticated/system-settings/desktop/'
+      path: '/desktop'
+      fullPath: '/system-settings/desktop/'
+      preLoaderRoute: typeof AuthenticatedSystemSettingsDesktopIndexRouteImport
+      parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
+    }
+    '/_authenticated/system-settings/film/': {
+      id: '/_authenticated/system-settings/film/'
+      path: '/film'
+      fullPath: '/system-settings/film/'
+      preLoaderRoute: typeof AuthenticatedSystemSettingsFilmIndexRouteImport
       parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
     }
     '/_authenticated/system-settings/models/': {
@@ -1433,6 +1606,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemSettingsSiteSectionRouteImport
       parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
     }
+    '/_authenticated/system-settings/wechat/': {
+      id: '/_authenticated/system-settings/wechat/'
+      path: '/wechat'
+      fullPath: '/system-settings/wechat/'
+      preLoaderRoute: typeof AuthenticatedSystemSettingsWechatIndexRouteImport
+      parentRoute: typeof AuthenticatedSystemSettingsRouteRoute
+    }
     '/_authenticated/apps/midjourney/styles/': {
       id: '/_authenticated/apps/midjourney/styles/'
       path: '/apps/midjourney/styles'
@@ -1490,11 +1670,14 @@ interface AuthenticatedSystemSettingsRouteRouteChildren {
   AuthenticatedSystemSettingsAuthIndexRoute: typeof AuthenticatedSystemSettingsAuthIndexRoute
   AuthenticatedSystemSettingsBillingIndexRoute: typeof AuthenticatedSystemSettingsBillingIndexRoute
   AuthenticatedSystemSettingsContentIndexRoute: typeof AuthenticatedSystemSettingsContentIndexRoute
+  AuthenticatedSystemSettingsDesktopIndexRoute: typeof AuthenticatedSystemSettingsDesktopIndexRoute
+  AuthenticatedSystemSettingsFilmIndexRoute: typeof AuthenticatedSystemSettingsFilmIndexRoute
   AuthenticatedSystemSettingsModelsIndexRoute: typeof AuthenticatedSystemSettingsModelsIndexRoute
   AuthenticatedSystemSettingsOperationsIndexRoute: typeof AuthenticatedSystemSettingsOperationsIndexRoute
   AuthenticatedSystemSettingsRequestPoliciesIndexRoute: typeof AuthenticatedSystemSettingsRequestPoliciesIndexRoute
   AuthenticatedSystemSettingsSecurityIndexRoute: typeof AuthenticatedSystemSettingsSecurityIndexRoute
   AuthenticatedSystemSettingsSiteIndexRoute: typeof AuthenticatedSystemSettingsSiteIndexRoute
+  AuthenticatedSystemSettingsWechatIndexRoute: typeof AuthenticatedSystemSettingsWechatIndexRoute
 }
 
 const AuthenticatedSystemSettingsRouteRouteChildren: AuthenticatedSystemSettingsRouteRouteChildren =
@@ -1525,6 +1708,10 @@ const AuthenticatedSystemSettingsRouteRouteChildren: AuthenticatedSystemSettings
       AuthenticatedSystemSettingsBillingIndexRoute,
     AuthenticatedSystemSettingsContentIndexRoute:
       AuthenticatedSystemSettingsContentIndexRoute,
+    AuthenticatedSystemSettingsDesktopIndexRoute:
+      AuthenticatedSystemSettingsDesktopIndexRoute,
+    AuthenticatedSystemSettingsFilmIndexRoute:
+      AuthenticatedSystemSettingsFilmIndexRoute,
     AuthenticatedSystemSettingsModelsIndexRoute:
       AuthenticatedSystemSettingsModelsIndexRoute,
     AuthenticatedSystemSettingsOperationsIndexRoute:
@@ -1535,6 +1722,8 @@ const AuthenticatedSystemSettingsRouteRouteChildren: AuthenticatedSystemSettings
       AuthenticatedSystemSettingsSecurityIndexRoute,
     AuthenticatedSystemSettingsSiteIndexRoute:
       AuthenticatedSystemSettingsSiteIndexRoute,
+    AuthenticatedSystemSettingsWechatIndexRoute:
+      AuthenticatedSystemSettingsWechatIndexRoute,
   }
 
 const AuthenticatedSystemSettingsRouteRouteWithChildren =
@@ -1570,7 +1759,13 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAppsCanvasCanvasIdRoute: typeof AuthenticatedAppsCanvasCanvasIdRoute
   AuthenticatedAppsCanvasIndexRoute: typeof AuthenticatedAppsCanvasIndexRoute
   AuthenticatedAppsEcomIndexRoute: typeof AuthenticatedAppsEcomIndexRoute
+  AuthenticatedAppsGalleryIndexRoute: typeof AuthenticatedAppsGalleryIndexRoute
+  AuthenticatedAppsHomeIndexRoute: typeof AuthenticatedAppsHomeIndexRoute
+  AuthenticatedAppsIdeIndexRoute: typeof AuthenticatedAppsIdeIndexRoute
+  AuthenticatedAppsKbIndexRoute: typeof AuthenticatedAppsKbIndexRoute
   AuthenticatedAppsMidjourneyIndexRoute: typeof AuthenticatedAppsMidjourneyIndexRoute
+  AuthenticatedAppsPptIndexRoute: typeof AuthenticatedAppsPptIndexRoute
+  AuthenticatedAppsSearchIndexRoute: typeof AuthenticatedAppsSearchIndexRoute
   AuthenticatedAppsMidjourneyStylesBoardIdRoute: typeof AuthenticatedAppsMidjourneyStylesBoardIdRoute
   AuthenticatedAppsMidjourneyStylesIndexRoute: typeof AuthenticatedAppsMidjourneyStylesIndexRoute
 }
@@ -1605,7 +1800,13 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAppsCanvasCanvasIdRoute: AuthenticatedAppsCanvasCanvasIdRoute,
   AuthenticatedAppsCanvasIndexRoute: AuthenticatedAppsCanvasIndexRoute,
   AuthenticatedAppsEcomIndexRoute: AuthenticatedAppsEcomIndexRoute,
+  AuthenticatedAppsGalleryIndexRoute: AuthenticatedAppsGalleryIndexRoute,
+  AuthenticatedAppsHomeIndexRoute: AuthenticatedAppsHomeIndexRoute,
+  AuthenticatedAppsIdeIndexRoute: AuthenticatedAppsIdeIndexRoute,
+  AuthenticatedAppsKbIndexRoute: AuthenticatedAppsKbIndexRoute,
   AuthenticatedAppsMidjourneyIndexRoute: AuthenticatedAppsMidjourneyIndexRoute,
+  AuthenticatedAppsPptIndexRoute: AuthenticatedAppsPptIndexRoute,
+  AuthenticatedAppsSearchIndexRoute: AuthenticatedAppsSearchIndexRoute,
   AuthenticatedAppsMidjourneyStylesBoardIdRoute:
     AuthenticatedAppsMidjourneyStylesBoardIdRoute,
   AuthenticatedAppsMidjourneyStylesIndexRoute:
