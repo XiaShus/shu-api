@@ -212,6 +212,9 @@ func initConstantEnv() {
 	// 声明式任务协议桥只观察数据库；这些值控制一次客户端观察连接，
 	// 不改变后台轮询或结算生命周期。
 	constant.TaskPluginProtocolTimeoutSeconds = GetEnvOrDefault("TASK_PLUGIN_PROTOCOL_TIMEOUT_SECONDS", 600)
+	// 同步生图桥等 Midjourney 出图的上限（秒）；实际等待取它与
+	// TASK_PLUGIN_PROTOCOL_TIMEOUT_SECONDS 的较小值。
+	constant.MjSyncImageTimeoutSeconds = GetEnvOrDefault("MJ_SYNC_IMAGE_TIMEOUT_SECONDS", 180)
 	constant.TaskPluginProtocolTickMilliseconds = GetEnvOrDefault("TASK_PLUGIN_PROTOCOL_TICK_MILLISECONDS", 2000)
 	constant.TaskPluginProtocolTickJitterMilliseconds = GetEnvOrDefault("TASK_PLUGIN_PROTOCOL_TICK_JITTER_MILLISECONDS", 500)
 	constant.TaskPluginProtocolHeartbeatSeconds = GetEnvOrDefault("TASK_PLUGIN_PROTOCOL_HEARTBEAT_SECONDS", 15)

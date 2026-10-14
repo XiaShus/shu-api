@@ -2,6 +2,8 @@ package relay
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -959,6 +961,101 @@ func RelayMidjourneySubmit(c *gin.Context, relayInfo *relaycommon.RelayInfo) *dt
 		}
 	}
 	return nil
+}
+
+// mjImageSyncSubmitTimeout bounds the submission call of the synchronous image
+// bridge. It matches the timeout the legacy Midjourney submission uses.
+const mjImageSyncSubmitTimeout = 60 * time.Second
+
+// submitMidjourneyTask submits one action to the channel's Midjourney proxy and
+// persists the pending task row, which both the synchronous caller and the
+// scheduled poller then follow.
+//
+// It builds its own request body instead of reusing DoMidjourneyHttpRequest:
+// that helper forwards the body cached in the request context, and the
+// synchronous bridge is reached through the OpenAI images endpoint, whose body
+// is not a Midjourney submission payload. Quota stays the caller's concern —
+// this function never writes task.Quota or task.BillingChannelId, so a row it
+// inserts is never refunded by the poller.
+func submitMidjourneyTask(c *gin.Context, relayInfo *relaycommon.RelayInfo, midjRequest *dto.MidjourneyRequest, mode string) (*model.Midjourney, error) {
+	if relayInfo == nil || midjRequest == nil {
+		return nil, errors.New("midjourney submission requires a request")
+	}
+	baseURL := strings.TrimRight(relayInfo.ChannelBaseUrl, "/")
+	if baseURL == "" {
+		return nil, errors.New("midjourney channel has no base url")
+	}
+	requestBody, err := common.Marshal(midjRequest)
+	if err != nil {
+		return nil, err
+	}
+	fullRequestURL := baseURL + getMjRequestPath(mjImagineSubmitPath, mode)
+
+	requestCtx, cancel := context.WithTimeout(c.Request.Context(), mjImageSyncSubmitTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(requestCtx, http.MethodPost, fullRequestURL, bytes.NewReader(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Accept", "application/json")
+	if key := strings.TrimPrefix(strings.TrimSpace(relayInfo.ApiKey), "Bearer "); key != "" {
+		req.Header.Set("mj-api-secret", key)
+	}
+
+	resp, err := service.GetHttpClient().Do(req)
+	response := &dto.MidjourneyResponseWithStatusCode{StatusCode: http.StatusBadGateway}
+	if err != nil {
+		service.RecordMidjourneyPolicyResponse(c, response, err)
+		return nil, fmt.Errorf("midjourney request failed: %w", err)
+	}
+	defer service.CloseResponseBodyGracefully(resp)
+	response.StatusCode = resp.StatusCode
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		service.RecordMidjourneyPolicyResponse(c, response, err)
+		return nil, fmt.Errorf("midjourney read response failed: %w", err)
+	}
+	if len(responseBody) == 0 {
+		service.RecordMidjourneyPolicyResponse(c, response, errors.New("empty response body"))
+		return nil, errors.New("midjourney returned an empty response body")
+	}
+	if unmarshalErr := common.Unmarshal(responseBody, &response.Response); unmarshalErr != nil {
+		service.RecordMidjourneyPolicyResponse(c, response, unmarshalErr)
+		return nil, errors.New("midjourney returned an unreadable response body")
+	}
+	// 1-提交成功, 21-任务已存在(处理中或有结果了), 22-排队中：
+	// 三者都已在上游建好任务，重试只会生成重复任务并重复付费。
+	if !service.RecordMidjourneyPolicyResponse(c, response, nil) {
+		description := strings.TrimSpace(response.Response.Description)
+		if description == "" {
+			description = "midjourney rejected the submission"
+		}
+		return nil, fmt.Errorf("midjourney submission rejected (code %d): %s", response.Response.Code, description)
+	}
+	// Without an upstream task id the bridge cannot follow the task, and an
+	// untracked row would only be swept as a failure later.
+	taskID := strings.TrimSpace(response.Response.Result)
+	if taskID == "" {
+		return nil, errors.New("midjourney accepted the submission without a task id")
+	}
+
+	task := &model.Midjourney{
+		UserId:      relayInfo.UserId,
+		Code:        response.Response.Code,
+		Action:      midjRequest.Action,
+		MjId:        taskID,
+		Prompt:      midjRequest.Prompt,
+		Description: response.Response.Description,
+		SubmitTime:  time.Now().UnixNano() / int64(time.Millisecond),
+		Progress:    "0%",
+		ChannelId:   relayInfo.ChannelId,
+		Mode:        mode,
+	}
+	if err := task.Insert(); err != nil {
+		return nil, fmt.Errorf("insert_midjourney_task_failed: %w", err)
+	}
+	return task, nil
 }
 
 type taskChangeParams struct {

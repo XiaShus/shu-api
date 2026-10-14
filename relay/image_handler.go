@@ -41,6 +41,10 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 		return types.NewError(err, types.ErrorCodeChannelModelMappedError, types.ErrOptionWithSkipRetry())
 	}
 
+	if handled, midjourneyErr := tryMidjourneyImageRelay(c, info, request); handled {
+		return midjourneyErr
+	}
+
 	adaptor := GetAdaptor(info.ApiType)
 	if adaptor == nil {
 		return types.NewError(fmt.Errorf("invalid api type: %d", info.ApiType), types.ErrorCodeInvalidApiType, types.ErrOptionWithSkipRetry())
@@ -159,6 +163,25 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 		return newAPIError
 	}
 
+	typedUsage, ok := usage.(*dto.Usage)
+	if !ok || typedUsage == nil {
+		// An image adaptor that reports no usage still has to reach the billing
+		// tail with a non-nil payload: a fixed-price image request is only
+		// billable while that payload carries a token count.
+		typedUsage = &dto.Usage{}
+	}
+	finalizeImageRelay(c, info, request, typedUsage)
+	return nil
+}
+
+// finalizeImageRelay derives the settled image count, writes the consume log and
+// settles the reservation. Every image relay that bills by image quantity ends
+// here, including the Midjourney synchronous bridge.
+func finalizeImageRelay(c *gin.Context, info *relaycommon.RelayInfo, request *dto.ImageRequest, usage *dto.Usage) {
+	if usage == nil {
+		usage = &dto.Usage{}
+	}
+
 	// The log content shows the settled count: the count the handler derived
 	// from the upstream response when it did, otherwise the reserved quantity.
 	imageN := info.RequestedImageCount()
@@ -168,11 +191,11 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 		imageN = common.QuotaRound(count)
 	}
 
-	if usage.(*dto.Usage).TotalTokens == 0 {
-		usage.(*dto.Usage).TotalTokens = 1
+	if usage.TotalTokens == 0 {
+		usage.TotalTokens = 1
 	}
-	if usage.(*dto.Usage).PromptTokens == 0 {
-		usage.(*dto.Usage).PromptTokens = 1
+	if usage.PromptTokens == 0 {
+		usage.PromptTokens = 1
 	}
 
 	quality := request.Quality
@@ -192,6 +215,5 @@ func ImageHelper(c *gin.Context, info *relaycommon.RelayInfo) (newAPIError *type
 		logContent = append(logContent, common.NewMessage("Image count {{count}}", map[string]any{"count": imageN}))
 	}
 
-	service.PostTextConsumeQuota(c, info, usage.(*dto.Usage), logContent)
-	return nil
+	service.PostTextConsumeQuota(c, info, usage, logContent)
 }

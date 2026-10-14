@@ -6,11 +6,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
-	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
@@ -167,137 +165,13 @@ func runMidjourneyTaskUpdateOnce(ctx context.Context, report func(processed, tot
 				responseItem.FailReason = "Upstream task timed out (over 1 hour)"
 				responseItem.Status = "FAILURE"
 			}
-			if !checkMjTaskNeedUpdate(task, responseItem, upstreamRaw) {
-				continue
-			}
-			preStatus := task.Status
-			task.Code = 1
-			task.Progress = responseItem.Progress
-			task.PromptEn = responseItem.PromptEn
-			task.State = responseItem.State
-			task.SubmitTime = responseItem.SubmitTime
-			task.StartTime = responseItem.StartTime
-			task.FinishTime = responseItem.FinishTime
-			task.ImageUrl = responseItem.ImageUrl
-			task.Status = responseItem.Status
-			task.FailReason = responseItem.FailReason
-			if responseItem.Properties != nil {
-				propertiesStr, _ := common.Marshal(responseItem.Properties)
-				task.Properties = string(propertiesStr)
-			}
-			if responseItem.Buttons != nil {
-				buttonStr, _ := common.Marshal(responseItem.Buttons)
-				task.Buttons = string(buttonStr)
-			}
-			// 映射 VideoUrl
-			task.VideoUrl = responseItem.VideoUrl
-
-			// 映射 VideoUrls - 将数组序列化为 JSON 字符串
-			if responseItem.VideoUrls != nil && len(responseItem.VideoUrls) > 0 {
-				videoUrlsStr, err := common.Marshal(responseItem.VideoUrls)
-				if err != nil {
-					logger.LogError(ctx, common.LogText("failed to serialize VideoUrls: %v", err))
-					task.VideoUrls = "[]" // 失败时设置为空数组
-				} else {
-					task.VideoUrls = string(videoUrlsStr)
-				}
-			} else {
-				task.VideoUrls = "" // 空值时清空字段
-			}
-
-			service.RememberMidjourneyUpstream(task, upstreamRaw)
-			logMidjourneyModeMismatch(ctx, task, responseItem)
-			if responseItem.Status == "SUCCESS" {
-				service.PersistMidjourneyMedia(task)
-			}
-
-			shouldReturnQuota := false
-			terminalFail := task.Status == "FAILURE" || task.Status == "CANCEL" || task.Status == "CANCELED" || task.Status == "CANCELLED"
-			if (task.Progress != "100%" && responseItem.FailReason != "") || (task.Progress == "100%" && terminalFail) {
-				logger.LogInfo(ctx, common.LogText("%s failed: %s", task.MjId, task.FailReason))
-				task.Progress = "100%"
-				if task.Quota != 0 {
-					shouldReturnQuota = true
-				}
-			}
-			won, err := task.UpdateWithStatus(preStatus)
-			if err != nil {
-				logger.LogError(ctx, common.LogText("UpdateMidjourneyTask task error: %s", err.Error()))
-			} else if won && shouldReturnQuota {
-				service.RefundMidjourneyQuota(ctx, task, "Composition failed")
-			}
+			service.ApplyMidjourneyUpstreamItem(ctx, task, responseItem, upstreamRaw)
 		}
 	}
 	if report != nil && (ctx == nil || ctx.Err() == nil) {
 		report(totalChannels, totalChannels)
 	}
 	return summary
-}
-
-func checkMjTaskNeedUpdate(oldTask *model.Midjourney, newTask dto.MidjourneyDto, upstreamRaw []byte) bool {
-	if oldTask.Code != 1 {
-		return true
-	}
-	if oldTask.Progress != newTask.Progress {
-		return true
-	}
-	if oldTask.PromptEn != newTask.PromptEn {
-		return true
-	}
-	if oldTask.State != newTask.State {
-		return true
-	}
-	if oldTask.SubmitTime != newTask.SubmitTime {
-		return true
-	}
-	if oldTask.StartTime != newTask.StartTime {
-		return true
-	}
-	if oldTask.FinishTime != newTask.FinishTime {
-		return true
-	}
-	if oldTask.ImageUrl != newTask.ImageUrl {
-		return true
-	}
-	if oldTask.Status != newTask.Status {
-		return true
-	}
-	if oldTask.FailReason != newTask.FailReason {
-		return true
-	}
-	if oldTask.FinishTime != newTask.FinishTime {
-		return true
-	}
-	if oldTask.Progress != "100%" && newTask.FailReason != "" {
-		return true
-	}
-	// 检查 VideoUrl 是否需要更新
-	if oldTask.VideoUrl != newTask.VideoUrl {
-		return true
-	}
-	storedMode := service.NormalizeMjMode(oldTask.Mode)
-	upstreamMode := service.NormalizeMjMode(newTask.Mode)
-	if upstreamMode == "" && newTask.Properties != nil {
-		upstreamMode = service.InferMjModeFromPrompt(newTask.Properties.FinalPrompt)
-	}
-	if storedMode != "" && upstreamMode != "" && storedMode != upstreamMode {
-		return true
-	}
-	// 检查 VideoUrls 是否需要更新
-	if newTask.VideoUrls != nil && len(newTask.VideoUrls) > 0 {
-		newVideoUrlsStr, _ := common.Marshal(newTask.VideoUrls)
-		if oldTask.VideoUrls != string(newVideoUrlsStr) {
-			return true
-		}
-	} else if oldTask.VideoUrls != "" {
-		// 如果新数据没有 VideoUrls 但旧数据有，需要更新（清空）
-		return true
-	}
-	if strings.TrimSpace(string(upstreamRaw)) != "" && service.MidjourneyPayloadChanged(oldTask, upstreamRaw) {
-		return true
-	}
-
-	return false
 }
 
 func GetAllMidjourney(c *gin.Context) {
@@ -354,19 +228,4 @@ func GetUserMidjourney(c *gin.Context) {
 	pageInfo.SetTotal(int(total))
 	pageInfo.SetItems(items)
 	common.ApiSuccess(c, pageInfo)
-}
-
-func logMidjourneyModeMismatch(ctx context.Context, task *model.Midjourney, item dto.MidjourneyDto) {
-	if task == nil {
-		return
-	}
-	stored := service.NormalizeMjMode(task.Mode)
-	upstream := service.NormalizeMjMode(item.Mode)
-	if upstream == "" && item.Properties != nil {
-		upstream = service.InferMjModeFromPrompt(item.Properties.FinalPrompt)
-	}
-	if stored == "" || upstream == "" || stored == upstream {
-		return
-	}
-	common.SysLog(fmt.Sprintf("midjourney mode mismatch mj_id=%s stored=%s upstream=%s", task.MjId, stored, upstream))
 }
